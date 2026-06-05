@@ -1,0 +1,8 @@
+{
+  "name": "Dhiraj Kumar - Portfolio",
+  "description": "Premium liquid glass video editor portfolio with a real-time gaze-following central avatar and dynamic Google Sheets synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

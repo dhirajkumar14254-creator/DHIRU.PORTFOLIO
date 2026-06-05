@@ -1,0 +1,293 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --animate-float-slow: float-slow 8s ease-in-out infinite;
+  --animate-float-medium: float-medium 6s ease-in-out infinite;
+  --animate-float-fast: float-fast 4s ease-in-out infinite;
+  --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(3deg); }
+}
+
+@keyframes float-medium {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-3deg); }
+}
+
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(1.5deg); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+/* Glassmorphism custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Base body style with soft, fluid ambient gradient backdrop (Atmospheric / Immersive High-End Glass Theme) */
+body {
+  font-family: var(--font-sans);
+  background-color: #E2E8F0;
+  color: #0f172a;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Soft glowing glass reflection overlay */
+.liquid-glass-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e0ebff 35%, #f1efff 65%, #fae8ff 100%);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 3D Liquid Morphing Blob Keyframes for high-end fluid/liquid glass look */
+@keyframes morph-drift-cyan {
+  0%, 100% {
+    border-radius: 45% 55% 70% 30% / 45% 55% 45% 55%;
+    transform: translate(0vw, 0vh) rotate(0deg) scale(1);
+  }
+  25% {
+    border-radius: 70% 30% 50% 50% / 60% 40% 60% 40%;
+    transform: translate(10vw, -8vh) rotate(90deg) scale(1.08);
+  }
+  50% {
+    border-radius: 50% 50% 30% 70% / 40% 60% 30% 70%;
+    transform: translate(20vw, -2vh) rotate(180deg) scale(0.92);
+  }
+  75% {
+    border-radius: 60% 40% 60% 40% / 55% 45% 55% 45%;
+    transform: translate(8vw, 10vh) rotate(270deg) scale(1.04);
+  }
+}
+
+@keyframes morph-drift-purple {
+  0%, 100% {
+    border-radius: 50% 50% 30% 70% / 50% 60% 40% 50%;
+    transform: translate(0vw, 0vh) rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 35% 65% 60% 40% / 45% 35% 65% 55%;
+    transform: translate(-12vw, 10vh) rotate(-120deg) scale(0.95);
+  }
+  66% {
+    border-radius: 65% 35% 45% 55% / 60% 50% 50% 40%;
+    transform: translate(6vw, -12vh) rotate(-240deg) scale(1.05);
+  }
+}
+
+@keyframes morph-drift-pink {
+  0%, 100% {
+    border-radius: 60% 40% 60% 40% / 45% 55% 45% 55%;
+    transform: translate(0vw, 0vh) rotate(0deg) scale(1.02);
+  }
+  50% {
+    border-radius: 40% 60% 40% 60% / 55% 45% 55% 45%;
+    transform: translate(-12vw, -10vh) rotate(180deg) scale(0.94);
+  }
+}
+
+@keyframes morph-drift-indigo {
+  0%, 100% {
+    border-radius: 52% 48% 65% 35% / 48% 52% 48% 52%;
+    transform: translate(0vw, 0vh) rotate(0deg) scale(0.98);
+  }
+  50% {
+    border-radius: 45% 55% 50% 50% / 55% 45% 60% 40%;
+    transform: translate(14vw, 12vh) rotate(-180deg) scale(1.06);
+  }
+}
+
+/* Base liquid 3D sphere/blob setup as physical glass lenses */
+.liquid-blob {
+  position: absolute;
+  mix-blend-mode: normal;
+  pointer-events: none;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  transition: all 1.2s ease-in-out;
+}
+
+/* Beautiful ultra-tactile 3D radial specularity styles representing real cut crystal bubbles */
+.liquid-blob-cyan {
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.98) 0%, rgba(207, 250, 254, 0.6) 18%, rgba(103, 232, 249, 0.25) 45%, rgba(14, 116, 144, 0.08) 75%, rgba(6, 182, 212, 0.2) 100%);
+  box-shadow: 
+    inset -15px -15px 40px rgba(6, 182, 212, 0.25),
+    inset 15px 15px 35px rgba(255, 255, 255, 0.95),
+    inset 0 -8px 15px rgba(255, 255, 255, 0.4),
+    0 30px 60px -15px rgba(6, 182, 212, 0.22),
+    0 10px 20px -5px rgba(255, 255, 255, 0.82);
+  animation: morph-drift-cyan 28s ease-in-out infinite;
+}
+
+.liquid-blob-purple {
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.98) 0%, rgba(243, 232, 255, 0.6) 18%, rgba(216, 180, 254, 0.25) 45%, rgba(126, 34, 206, 0.08) 75%, rgba(147, 51, 234, 0.2) 100%);
+  box-shadow: 
+    inset -15px -15px 40px rgba(147, 51, 234, 0.25),
+    inset 15px 15px 35px rgba(255, 255, 255, 0.9),
+    inset 0 -8px 15px rgba(255, 255, 255, 0.4),
+    0 30px 60px -15px rgba(147, 51, 234, 0.22),
+    0 10px 20px -5px rgba(255, 255, 255, 0.82);
+  animation: morph-drift-purple 34s ease-in-out infinite;
+}
+
+.liquid-blob-pink {
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.98) 0%, rgba(253, 242, 248, 0.6) 18%, rgba(244, 143, 177, 0.25) 45%, rgba(225, 29, 72, 0.08) 75%, rgba(244, 63, 94, 0.2) 100%);
+  box-shadow: 
+    inset -15px -15px 40px rgba(244, 63, 94, 0.22),
+    inset 15px 15px 35px rgba(255, 255, 255, 0.95),
+    inset 0 -8px 15px rgba(255, 255, 255, 0.4),
+    0 30px 60px -15px rgba(244, 63, 94, 0.18),
+    0 10px 20px -5px rgba(255, 255, 255, 0.82);
+  animation: morph-drift-pink 30s ease-in-out infinite;
+}
+
+.liquid-blob-indigo {
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.98) 0%, rgba(224, 231, 255, 0.6) 18%, rgba(165, 180, 252, 0.25) 45%, rgba(67, 56, 202, 0.08) 75%, rgba(79, 70, 229, 0.2) 100%);
+  box-shadow: 
+    inset -15px -15px 40px rgba(79, 70, 229, 0.25),
+    inset 15px 15px 35px rgba(255, 255, 255, 0.9),
+    inset 0 -8px 15px rgba(255, 255, 255, 0.4),
+    0 30px 60px -15px rgba(79, 70, 229, 0.22),
+    0 10px 20px -5px rgba(255, 255, 255, 0.82);
+  animation: morph-drift-indigo 36s ease-in-out infinite;
+}
+
+/* Premium refractive liquid glass card styling */
+.liquid-glass-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03); /* Extremely clean glass-like absolute transparency */
+  backdrop-filter: blur(42px) saturate(230%);
+  -webkit-backdrop-filter: blur(42px) saturate(230%);
+  border: 1px solid rgba(255, 255, 255, 0.55); /* Perfect, highly resolved thin crystal-cut edge highlight */
+  box-shadow: 
+    0 30px 65px -15px rgba(31, 38, 135, 0.04), 
+    0 8px 24px -8px rgba(0, 0, 0, 0.01),
+    inset 0 1.5px 0px 0px rgba(255, 255, 255, 0.8), /* Sharp specular top light rim */
+    inset 0 12px 28px -10px rgba(255, 255, 255, 0.65), /* High-reflection upper glaze */
+    inset 0 -12px 20px -12px rgba(255, 255, 255, 0.35); /* Refracted bottom rim reflection */
+}
+
+/* Specular glassy glossy buttons with a glassy bulb highlight */
+.bubble-gloss {
+  position: relative;
+}
+.bubble-gloss::after {
+  content: '';
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  right: 1.5px;
+  height: 48%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.15) 100%);
+  border-radius: 50% 50% 40% 40% / 60% 60% 40% 40%;
+  pointer-events: none;
+}
+
+/* Glass card frosted reflection glow border */
+.glass-border {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+/* Frosted shadow - lighter for high-end glassmorphism */
+.glass-shadow {
+  box-shadow: 
+    0 25px 60px -10px rgba(79, 70, 229, 0.05), 
+    0 4px 15px 0 rgba(0, 0, 0, 0.01), 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+    inset 0 15px 30px -10px rgba(255, 255, 255, 0.6);
+}
+
+/* Custom print stylesheet to extract and print only the CV sheet beautifully */
+@media print {
+  /* Set exact background and text properties on print */
+  html, body {
+    background: white !important;
+    background-color: white !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide the rest of the app's components on prints */
+  #home-page-viewport,
+  #bottom-navbar,
+  #center-portrait-anchor,
+  #welcome-quote-pill,
+  #top-welcome-banner,
+  #left-sidebar-pro-audio,
+  #right-sidebar-color-grading,
+  #bottom-hero-presentation,
+  #edit-admin-trigger-button,
+  #edit-admin-sidebar,
+  .liquid-glass-bg,
+  .liquid-blob,
+  header,
+  footer,
+  #resume-page-container,
+  #skills-page-container,
+  #videos-page-container,
+  #contact-page-container {
+    display: none !important;
+  }
+
+  /* Make only the CV modal layout print correctly as the singular body cover */
+  .cv-print-container {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 15px !important;
+    background: white !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Hide print controls */
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Retain colorful backgrounds or borders cleanly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
