@@ -27,6 +27,7 @@ import {
 import FloatingLogos from "../components/FloatingLogos";
 import { resolveImageUrl, getDriveFileId, resolveResumeUrl } from "../utils/googleSheet";
 import { PortfolioData, VideoItem } from "../types";
+import homeAvatar from "../assets/images/regenerated_image_1780580606806.png";
 
 interface HomeProps {
   portfolioData: PortfolioData;
@@ -59,8 +60,8 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }
     Object.values(portfolioData.avatarImageMap).some(url => url && (url.startsWith("http") || url.startsWith("/")))
   );
 
-  // Stably lock centerpiece image to the uploaded professional face portrait
-  const activeAvatarImageUrl = "/src/assets/images/regenerated_image_1780580606806.png";
+  // Dynamically load the centerpiece home image from Google Sheet's HOME CENTER VIDEO TAB CORNER section if configured, otherwise fallback
+  const activeAvatarImageUrl = portfolioData?.homeCenterImage || homeAvatar;
 
   // Safely resolve CV HTML link from Google Sheet's RESUME tab (or fallback to elegant defaults)
   const cvLinkItem = portfolioData.resume && portfolioData.resume[0];

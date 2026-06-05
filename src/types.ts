@@ -79,6 +79,8 @@ export interface PortfolioData {
   pjCorners?: PJCornerItem[];
   resume?: ResumeItem[];
   socialLinks?: SocialLinkItem[];
+  homeCenterImage?: string;
+  videoSectionCornerImage?: string;
   contact: {
     phone: string;
     email: string;

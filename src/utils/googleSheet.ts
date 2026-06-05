@@ -1,5 +1,6 @@
 // googleSheet.ts - Robust parser for Google Sheets named tab schema
 import { PortfolioData, ExperienceItem, SkillItem, VideoItem, VideoCardItem, FloatingLogoItem, PJCornerItem, ResumeItem, SocialLinkItem } from "../types";
+import homeAvatar from "../assets/images/regenerated_image_1780580606806.png";
 
 const SPREADSHEET_ID = "1qFiy94AJ_Ffi0UakzwU2eEM2j1jiZiiOlvr6hu8Z2K8";
 
@@ -67,7 +68,7 @@ export function logDiagnostic(gid: string, type: "error" | "warning", message: s
 
 // HIGH-FIDELITY DEFAULT DATA OBJECT & STATIC LOCAL FALLBACK DATA
 export const STATIC_AVATAR_IMAGES = {
-  center_default: "/src/assets/images/regenerated_image_1780580606806.png",
+  center_default: homeAvatar,
   center_top: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&q=80&w=600",
   center_bottom: "https://images.unsplash.com/photo-1607990283143-e81e7a2c93ab?auto=format&fit=crop&q=80&w=600",
   center_left: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80&w=600",
@@ -137,7 +138,7 @@ export const demoData: PortfolioData = {
   aboutMe: "I am an experienced video editor with a passion for crafting compelling visual stories. With four years of expertise in Adobe Premiere Pro and Adobe After Effects, I have honed my skills in creating captivating videos that engage and captivate audiences.",
   welcomeSection: "WELCOME",
   centerImages: [
-    "/src/assets/images/regenerated_image_1780580606806.png"
+    homeAvatar
   ],
   avatarImageMap: STATIC_AVATAR_IMAGES,
   floatingLogos: [], // component falls back to top-tier built-in logos in FloatingLogos.tsx
@@ -251,7 +252,9 @@ export function resolveImageUrl(path: string): string {
   if (trimmed.startsWith("http") && (trimmed.includes("drive.google.com") || trimmed.includes("docs.google.com") || trimmed.includes("googleusercontent.com"))) {
     const fileId = getDriveFileId(trimmed);
     if (fileId) {
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+      // Use the high-performance cookie-free lh3.googleusercontent.com CDN direct image link.
+      // This is the ideal and most robust method used for Google Drive public file embeds.
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
   }
 
@@ -294,7 +297,7 @@ export function cleanCellText(cell: any): string {
 }
 
 // Map of canonical sheet categories and their misspelled counterparts to exact GIDs
-const VALID_SHEETS_CONFIG: Record<string, { name: string; gid: string }> = {
+const VALID_SHEETS_CONFIG: Record<string, { name: string; gid?: string }> = {
   "HOME TEXT": { name: "HOME TEXT", gid: "0" },
   "HOME_TEXT": { name: "HOME TEXT", gid: "0" },
   "VIDEO": { name: "VIDEO", gid: "97283824" },
@@ -316,32 +319,41 @@ const VALID_SHEETS_CONFIG: Record<string, { name: string; gid: string }> = {
   "SOCIAL_SERVICES": { name: "SOCIAL LINK", gid: "736380310" },
   "CONTACT DETAILS": { name: "CONTACT DETAILS", gid: "1835024605" },
   "CONTACT_DETAILS": { name: "CONTACT DETAILS", gid: "1835024605" },
-  "CONTACT": { name: "CONTACT DETAILS", gid: "1835024605" }
+  "CONTACT": { name: "CONTACT DETAILS", gid: "1835024605" },
+  "HOME CENTER VIDEO TAB CORNER": { name: "HOME_CENTER_VIDEO_TAB_CORNER" },
+  "HOME_CENTER_VIDEO_TAB_CORNER": { name: "HOME_CENTER_VIDEO_TAB_CORNER" },
+  "HOME CENTER VIDEO": { name: "HOME_CENTER_VIDEO_TAB_CORNER" },
+  "HOME CENTER": { name: "HOME_CENTER_VIDEO_TAB_CORNER" },
+  "VIDEO CORNER": { name: "HOME_CENTER_VIDEO_TAB_CORNER" }
 };
 
-// Low-level fetch and parse helper by sheet name using exact GIDs
+// Low-level fetch and parse helper by sheet name using exact GIDs or Sheet Name fallback
 async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
   const normKey = sheetName.toUpperCase().trim();
   const config = VALID_SHEETS_CONFIG[normKey];
-  if (!config) {
-    // Return empty results immediately for non-existent sheets to prevent Google’s first-tab fallback
-    return [];
+  const targetSheetName = config ? config.name : sheetName;
+
+  let url = "";
+  if (config && config.gid) {
+    url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${config.gid}&_t=${Date.now()}`;
+  } else {
+    // Dynamic query by sheet name directly if gid doesn't exist, which fits new user tabs beautifully!
+    url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(targetSheetName)}&_t=${Date.now()}`;
   }
 
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${config.gid}&_t=${Date.now()}`;
   try {
     const res = await fetch(url);
     if (!res.ok) {
-      logDiagnostic(config.name, "error", `Fetch failed with HTTP status: ${res.status}`);
+      logDiagnostic(targetSheetName, "error", `Fetch failed with HTTP status: ${res.status}`);
       return [];
     }
     const text = await res.text();
-    sheetDiagnostics.rawResponses[config.name] = text;
+    sheetDiagnostics.rawResponses[targetSheetName] = text;
     
     // Check if returned content is HTML (Private sheets/login screens)
     if (text.trim().startsWith("<!DOCTYPE html") || text.includes("<html")) {
       logDiagnostic(
-        config.name, 
+        targetSheetName, 
         "error", 
         "Fetched sheet response returned HTML. This generally occurs when the Google Sheet is Private. Please share with 'Anyone with the link can view'."
       );
@@ -351,7 +363,7 @@ async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
     const jsonStart = text.indexOf("{");
     const jsonEnd = text.lastIndexOf("}");
     if (jsonStart === -1 || jsonEnd === -1) {
-      logDiagnostic(config.name, "error", "Failed to resolve JSON wrapping delimiters inside response payload.");
+      logDiagnostic(targetSheetName, "error", "Failed to resolve JSON wrapping delimiters inside response payload.");
       return [];
     }
     const jsonStr = text.substring(jsonStart, jsonEnd + 1);
@@ -360,12 +372,12 @@ async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
     try {
       data = JSON.parse(jsonStr);
     } catch (parseError: any) {
-      logDiagnostic(config.name, "error", `Malformed JSON structure: ${parseError.message}`);
+      logDiagnostic(targetSheetName, "error", `Malformed JSON structure: ${parseError.message}`);
       return [];
     }
     
     if (!data.table || !data.table.rows) {
-      logDiagnostic(config.name, "error", "Parsed JSON successfully, but is missing standard table.cols or table.rows layout.");
+      logDiagnostic(targetSheetName, "error", "Parsed JSON successfully, but is missing standard table.cols or table.rows layout.");
       return [];
     }
     
@@ -387,7 +399,7 @@ async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
       const colB = String(row["B"] || "").toLowerCase().trim();
       const colC = String(row["C"] || "").toLowerCase().trim();
       return (
-        colA === "direction" || colA === "role" || colA === "platform" || colA === "phone" || colA === "resume_no" || colA === "resume no." || colA === "name section" || colA === "platform name" || colA === "title" ||
+        colA === "direction" || colA === "role" || colA === "platform" || colA === "phone" || colA === "resume_no" || colA === "resume no." || colA === "name section" || colA === "platform name" || colA === "title" || colA === "link" || colA === "url" || colA === "image" ||
         colB === "company" || colB === "level" || colB === "email" || colB === "resume name" || colB === "welcome section" ||
         colC === "about me section" || colC === "pdf drive link" || colC === "rating"
       );
@@ -401,7 +413,7 @@ async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
       return keys.some(k => row[k] !== null && String(row[k]).trim() !== "");
     });
   } catch (error: any) {
-    logDiagnostic(config.name, "error", `Fatal parser exception: ${error.message}`);
+    logDiagnostic(targetSheetName, "error", `Fatal parser exception: ${error.message}`);
     return [];
   }
 }
@@ -410,18 +422,15 @@ async function fetchSheetByNameRaw(sheetName: string): Promise<any[]> {
 export async function fetchSheetByName(sheetName: string): Promise<any[]> {
   const normKey = sheetName.toUpperCase().trim();
   const config = VALID_SHEETS_CONFIG[normKey];
-  if (!config) {
-    console.warn(`[Google Sheet Integration] Active sheet tab matching "${sheetName}" is not configured or doesn't exist.`);
-    return [];
-  }
+  const targetSheetName = config ? config.name : sheetName;
 
   const rows = await fetchSheetByNameRaw(sheetName);
   if (rows && rows.length > 0) {
-    console.log(`[Google Sheet Integration] Successfully fetched active layout for tab: "${config.name}" (GID: ${config.gid})`);
+    console.log(`[Google Sheet Integration] Successfully fetched active layout for tab: "${targetSheetName}"`);
     return rows;
   }
   
-  console.warn(`[Google Sheet Integration] No rows retrieved from tab "${config.name}"`);
+  console.warn(`[Google Sheet Integration] No rows retrieved from tab "${targetSheetName}"`);
   return [];
 }
 
@@ -585,19 +594,51 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
     // 1. HOME TEXT
     const homeTextRows = await fetchSheetByName("HOME TEXT");
     const cleanHomeText = homeTextRows.filter(r => cleanCellText(r["A"]).toLowerCase() !== "name");
+    
     let name = demoData.name;
     let welcomeSection = demoData.welcomeSection;
     let aboutMe = demoData.aboutMe;
+    let homeCenterImage: string | undefined = undefined;
+    let videoSectionCornerImage: string | undefined = undefined;
+
     if (cleanHomeText.length > 0) {
       const row = cleanHomeText[0];
+      
+      // Col A, B, C: Name, Welcome banner text, and About me bio text
       name = cleanCellText(row["A"]) || name;
       welcomeSection = cleanCellText(row["B"]) || welcomeSection;
       aboutMe = cleanCellText(row["C"]) || aboutMe;
+
+      // Col D & E: HOME CENTER image link and VIDEO TAB CORNER image link (fallback to D if E is blank)
+      const colDVal = cleanCellText(row["D"]);
+      const colEVal = cleanCellText(row["E"]) || colDVal;
+
+      if (colDVal && (colDVal.toLowerCase().startsWith("http://") || colDVal.toLowerCase().startsWith("https://"))) {
+        homeCenterImage = resolveImageUrl(colDVal);
+      }
+      if (colEVal && (colEVal.toLowerCase().startsWith("http://") || colEVal.toLowerCase().startsWith("https://"))) {
+        videoSectionCornerImage = resolveImageUrl(colEVal);
+      }
+
+      console.log(`[Google Sheets HOME TEXT Image Sync] Resolved successfully from HOME TEXT Row 2:`, {
+        name,
+        welcomeSection,
+        aboutMe,
+        rawD: colDVal,
+        rawE: colEVal,
+        resolvedHomeCenter: homeCenterImage,
+        resolvedVideoCorner: videoSectionCornerImage
+      });
     }
 
-    // 2. AVATAR IMAGES (Static Fallback)
-    const avatarImageMap: Record<string, string> = STATIC_AVATAR_IMAGES;
-    const centerImages: string[] = Object.values(STATIC_AVATAR_IMAGES);
+    const resolvedHomeCenterImage = homeCenterImage || homeAvatar;
+    const resolvedVideoCornerImage = videoSectionCornerImage || resolvedHomeCenterImage;
+
+    const avatarImageMap: Record<string, string> = {
+      ...STATIC_AVATAR_IMAGES,
+      center_default: resolvedHomeCenterImage
+    };
+    const centerImages: string[] = [resolvedHomeCenterImage];
 
     // 3. FLOATING LOGO (Built-in orbit fallback in FloatingLogos component)
     const floatingLogos: FloatingLogoItem[] = [];
@@ -795,6 +836,8 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
       welcomeSection,
       centerImages: centerImages.length > 0 ? centerImages : demoData.centerImages,
       avatarImageMap,
+      homeCenterImage: resolvedHomeCenterImage,
+      videoSectionCornerImage: resolvedVideoCornerImage,
       floatingLogos,
       videoCards,
       pjCorners,

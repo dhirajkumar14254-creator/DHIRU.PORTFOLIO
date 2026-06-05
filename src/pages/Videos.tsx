@@ -6,8 +6,7 @@ import GlassCard from "../components/GlassCard";
 import { getVideosList } from "../utils/googleSheet";
 import { VideoItem, PortfolioData } from "../types";
 import UniversalVideoPlayer from "../components/UniversalVideoPlayer";
-
-const profilePic = "/src/assets/images/regenerated_image_1780652478984.png";
+import profilePic from "../assets/images/regenerated_image_1780652478984.png";
 
 interface VideosProps {
   onPlaySelected: (video: VideoItem) => void;
@@ -129,7 +128,7 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
           {/* User profile capsule circle */}
           <div className="w-10 h-10 rounded-full border border-white/80 shadow-md ring-2 ring-indigo-500/20 overflow-hidden flex items-center justify-center bg-white/50 mb-0.5 select-none">
             <img
-              src={profilePic}
+              src={portfolioData?.videoSectionCornerImage || profilePic}
               alt="Dhiraj Profiles"
               className="w-full h-full object-cover"
             />
