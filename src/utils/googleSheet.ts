@@ -217,19 +217,16 @@ export const demoData: PortfolioData = {
 // Define a stable, session-level timestamp for cache-busting.
 const SESSION_TIMESTAMP = Date.now();
 
+import {
+  getDriveFileId as resolverGetDriveFileId,
+  getYouTubeId as resolverGetYouTubeId,
+  getVimeoVideoId as resolverGetVimeoVideoId,
+  resolveVideoUrl as resolverResolveVideoUrl
+} from "./videoResolver";
+
 // Helper to extract file ID from Google Drive links
 export function getDriveFileId(url: string): string {
-  if (!url) return "";
-  const trimmed = url.trim();
-  const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (dMatch && dMatch[1]) {
-    return dMatch[1];
-  }
-  const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (idMatch && idMatch[1]) {
-    return idMatch[1];
-  }
-  return "";
+  return resolverGetDriveFileId(url);
 }
 
 // IMAGE RESOURCE PATH RESOLVER
@@ -517,21 +514,16 @@ export async function getCornerVideosData(): Promise<CornerVideosData> {
   };
 }
 
+export function getYouTubeId(url: string): string {
+  return resolverGetYouTubeId(url);
+}
+
+export function getVimeoId(url: string): string {
+  return resolverGetVimeoVideoId(url);
+}
+
 export function resolveVideoUrl(fileName: string): string {
-  if (!fileName) return "";
-  let trimmed = fileName.trim();
-  
-  if (trimmed.startsWith("http") && (trimmed.includes("drive.google.com") || trimmed.includes("docs.google.com") || trimmed.includes("googleusercontent.com"))) {
-    const fileId = getDriveFileId(trimmed);
-    if (fileId) {
-      return `https://drive.google.com/file/d/${fileId}/preview?vq=hd1080&rel=0`;
-    }
-  }
-  
-  if (!trimmed.startsWith("http") && !trimmed.startsWith("/")) {
-    return "/" + trimmed;
-  }
-  return trimmed;
+  return resolverResolveVideoUrl(fileName);
 }
 
 // Static/Backup list for VideItems
@@ -550,44 +542,24 @@ export function getVideosList(): VideoItem[] {
 
 export let lastLoadSource: "live" | "cache" | "local" = "live";
 
-// Full 10 Sheets Aggregate Data loader with real-time direct prioritization
-export async function getCompletePortfolioData(forceRefresh = true): Promise<PortfolioData> {
-  if (!forceRefresh) {
-    try {
-      const localOverride = localStorage.getItem("dhiraj_portfolio_data");
-      if (localOverride) {
-        const parsed = JSON.parse(localOverride);
-        if (parsed && typeof parsed === "object" && parsed.name) {
-          console.log("[Portfolio] Loading custom local user edits...");
-          lastLoadSource = "local";
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load local portfolio overrides:", e);
-    }
+export let memoryCachedData: PortfolioData | null = null;
 
-    // Now check the Google Sheet fetch cache
-    try {
-      const cachedData = localStorage.getItem("dhiraj_portfolio_sheet_cache");
-      const cachedTime = localStorage.getItem("dhiraj_portfolio_sheet_cache_time");
-      if (cachedData && cachedTime) {
-        const parsedTime = parseInt(cachedTime, 10);
-        const isExpired = Date.now() - parsedTime > 5 * 1000; // 5 seconds cache
-        if (!isExpired) {
-          const parsed = JSON.parse(cachedData);
-          if (parsed && typeof parsed === "object" && parsed.name) {
-            console.log("[Portfolio] Loading Google Sheet data from lightweight localStorage cache");
-            lastLoadSource = "cache";
-            return parsed;
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load cached sheet data:", e);
-    }
+export function clearMemoryCache() {
+  memoryCachedData = null;
+}
+
+// Full 10 Sheets Aggregate Data loader with real-time direct prioritization
+export async function getCompletePortfolioData(forceRefresh = false): Promise<PortfolioData> {
+  // If we already have the sheet data in memory, absolutely return it directly.
+  // This satisfies optimization task 15 (fetch only once and cache in memory to prevent repeated calls within the session).
+  if (memoryCachedData && !forceRefresh) {
+    console.log("[Portfolio] Loading Google Sheet data from Memory Cache");
+    lastLoadSource = "cache";
+    return memoryCachedData;
   }
 
+  // Page reloads/refreshes have memoryCachedData = null. To ensure "current to current data" sync with Google Sheets (with no stale cache blocks),
+  // we always execute a live dynamic fetch. Only if the live fetch fails do we fall back to cached data.
   console.log("[Portfolio] Pulling real-time 10 sheets schema dynamically...");
   lastLoadSource = "live";
   try {
@@ -803,6 +775,7 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
     // Compile dynamic videos list from all enabled VDO CARDs
     const videos: VideoItem[] = videoCards.map((v, index) => {
       const fileId = getDriveFileId(v.driveLink);
+      const ytId = getYouTubeId(v.driveLink);
       let category = "Editing";
       const titleLow = v.title.toLowerCase();
       if (titleLow.includes("crypto") || titleLow.includes("bitcoin") || titleLow.includes("dhiru")) {
@@ -816,6 +789,8 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
       let thumbnail = "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80&w=800";
       if (fileId) {
         thumbnail = `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+      } else if (ytId) {
+        thumbnail = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
       }
 
       return {
@@ -856,6 +831,7 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
       console.error("Failed to commit fetched Google Sheet data to cache:", e);
     }
 
+    memoryCachedData = result;
     return result;
 
   } catch (err: any) {
@@ -869,6 +845,7 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
         if (parsed && typeof parsed === "object" && parsed.name) {
           console.log("[Portfolio] Offline Recovery: Loaded cached Google Sheet image footprint.");
           lastLoadSource = "cache";
+          memoryCachedData = parsed;
           return parsed;
         }
       }
@@ -881,12 +858,14 @@ export async function getCompletePortfolioData(forceRefresh = true): Promise<Por
         if (parsed && typeof parsed === "object" && parsed.name) {
           console.log("[Portfolio] Offline Recovery: Loaded custom browser profile footprint.");
           lastLoadSource = "local";
+          memoryCachedData = parsed;
           return parsed;
         }
       }
     } catch (_) {}
   }
 
+  memoryCachedData = demoData;
   return demoData;
 }
 

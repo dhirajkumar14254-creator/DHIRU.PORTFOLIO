@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { 
   Sliders, 
@@ -33,9 +33,19 @@ interface HomeProps {
   portfolioData: PortfolioData;
   onNavToVideos: () => void;
   onPlayFloatingVdo: (vdo: VideoItem) => void;
+  lowPowerMode?: boolean;
 }
 
-export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }: HomeProps) {
+export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo, lowPowerMode = false }: HomeProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (!portfolioData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -136,11 +146,11 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }
           </div>
 
           {/* Outer Ring Orbits */}
-          <div className="absolute inset-0 rounded-full border border-white/20 animate-[spin_20s_linear_infinite]" />
-          <div className="absolute inset-6 rounded-full border border-dashed border-indigo-500/25 animate-[spin_60s_linear_infinite]" />
+          <div className={`absolute inset-0 rounded-full border border-white/20 ${lowPowerMode || isMobile ? "" : "animate-[spin_20s_linear_infinite]"}`} />
+          <div className={`absolute inset-6 rounded-full border border-dashed border-indigo-500/25 ${lowPowerMode || isMobile ? "" : "animate-[spin_60s_linear_infinite]"}`} />
           
           {/* SATURN SHIELDMORPHIC RING - Premium Cosmic Detail */}
-          <div className="absolute -inset-x-12 h-[28px] bg-gradient-to-r from-blue-300/35 via-indigo-400/40 to-pink-300/5 rotate-[-22deg] rounded-full border border-white/30 blur-[1px] transform translate-y-2 pointer-events-none skew-y-2 skew-x-2 shadow-sm z-10 animate-pulse" />
+          <div className={`absolute -inset-x-12 h-[28px] bg-gradient-to-r from-blue-300/35 via-indigo-400/40 to-pink-300/5 rotate-[-22deg] rounded-full border border-white/30 blur-[1px] transform translate-y-2 pointer-events-none skew-y-2 skew-x-2 shadow-sm z-10 ${lowPowerMode || isMobile ? "" : "animate-pulse"}`} />
 
           {/* Floating Neon Backdrop Glow */}
           <div 
@@ -167,18 +177,18 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }
               {/* Bouncing Audio Equalizers */}
               <div className="flex items-end justify-between h-14 px-1 gap-1">
                 {[1, 2, 3, 4].map((bar) => {
-                  const animDurations = ["0.6s", "0.9s", "0.75s", "0.5s"];
                   return (
                     <div key={bar} className="flex-1 bg-slate-100 rounded-full h-full relative overflow-hidden flex flex-col justify-end">
                       <motion.div
-                        animate={{ height: ["30%", "95%", "55%", "85%", "40%", "90%", "30%"] }}
+                        style={{ originY: 1 }}
+                        animate={lowPowerMode || isMobile ? { scaleY: 0.55 } : { scaleY: [0.3, 0.95, 0.55, 0.85, 0.4, 0.9, 0.3] }}
                         transition={{
                           duration: 2.2,
                           repeat: Infinity,
                           ease: "easeInOut",
                           delay: bar * 0.15
                         }}
-                        className="w-full bg-gradient-to-t from-emerald-500 via-indigo-500 to-pink-500 rounded-full shadow-sm"
+                        className="w-full h-full bg-gradient-to-t from-emerald-500 via-indigo-500 to-pink-500 rounded-full shadow-sm will-change-transform"
                       />
                     </div>
                   );
@@ -201,7 +211,7 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }
               <span className="text-[8px] font-extrabold font-mono text-indigo-600 tracking-wider">COLOR G.</span>
               
               {/* Radial Hue Spectrum Wheel */}
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-slate-200 relative flex items-center justify-center p-0.5 bg-gradient-to-tr from-rose-400 via-indigo-400 to-cyan-400 animate-[spin_24s_linear_infinite]">
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-slate-200 relative flex items-center justify-center p-0.5 bg-gradient-to-tr from-rose-400 via-indigo-400 to-cyan-400 ${lowPowerMode || isMobile ? "" : "animate-[spin_24s_linear_infinite]"}`}>
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center relative">
                   {/* Scope target dot */}
                   <div className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-md animate-pulse" />
@@ -237,11 +247,12 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo }
 
               {/* Glowing vertical playhead */}
               <motion.div 
-                animate={{ left: ["4%", "96%", "4%"] }}
+                animate={lowPowerMode ? { x: isMobile ? 110 : 140 } : { x: isMobile ? [0, 220, 0] : [0, 280, 0] }}
                 transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 bottom-0 w-[1.5px] bg-rose-500 z-10 pointer-events-none shadow-[0_0_8px_#f43f5e]"
+                className="absolute top-0 bottom-0 left-[4%] w-[1.5px] bg-rose-500 z-10 pointer-events-none"
+                style={{ willChange: "transform" }}
               >
-                <div className="absolute top-0 -left-1 w-2.5 h-2 bg-rose-500 rounded-b-sm border-b border-light-rose" />
+                <div className="absolute top-0 -left-1 w-2.5 h-2 bg-rose-500 rounded-b-sm border-b border-rose-300" />
               </motion.div>
 
               {/* Timeline Tracks lists */}

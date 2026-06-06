@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Play, Compass, ExternalLink, Mail, MessageSquareText, Instagram, Youtube, Linkedin, Globe, Phone, FileText } from "lucide-react";
+import { X, Play, Compass, ExternalLink, Mail, MessageSquareText, Instagram, Youtube, Linkedin, Globe, Phone, FileText, AlertTriangle } from "lucide-react";
 import Home from "./pages/Home";
 import Videos from "./pages/Videos";
 import SecondaryPages from "./pages/SecondaryPages";
 import BottomNavbar from "./components/BottomNavbar";
 import GlassCard from "./components/GlassCard";
+import InteractiveBackground from "./components/InteractiveBackground";
+import CrazyLoadingIndicator from "./components/CrazyLoadingIndicator";
 import { 
   getCompletePortfolioData, 
   saveLocalPortfolioData, 
@@ -13,9 +15,12 @@ import {
   sheetDiagnostics,
   resolveVideoUrl,
   getDriveFileId,
+  getYouTubeId,
+  getVimeoId,
   lastLoadSource
 } from "./utils/googleSheet";
 import { PortfolioData, ExperienceItem, SkillItem, VideoItem } from "./types";
+import { resolveVideoDetails } from "./utils/videoResolver";
 import { 
   Lock, 
   Unlock, 
@@ -31,23 +36,23 @@ import {
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>("home");
+
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showExploreModal, setShowExploreModal] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Mouse position state to animate liquid floating glass drops in background with absolute depth
-  const [bgMouse, setBgMouse] = useState({ x: 0, y: 0 });
-
+  // Global 120fps display refresh-rate ticker loop preventing layout thrashing
   useEffect(() => {
-    const handleBgMouseMove = (e: MouseEvent) => {
-      // Calculate relative ratio [-1, 1] relative to center of screen
-      const rx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2 || 1);
-      const ry = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2 || 1);
-      // Drifts up to 45px for maximum subtle crystal refraction depth
-      setBgMouse({ x: rx * 45, y: ry * 45 });
+    let active = true;
+    const tick = (now: number) => {
+      if (!active) return;
+      document.documentElement.style.setProperty("--global-time", `${now / 1000}s`);
+      requestAnimationFrame(tick);
     };
-    window.addEventListener("mousemove", handleBgMouseMove);
-    return () => window.removeEventListener("mousemove", handleBgMouseMove);
+    requestAnimationFrame(tick);
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Central state representing live Google Sheet & Local Storage data
@@ -61,8 +66,17 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showEditConsole, setShowEditConsole] = useState(false);
 
+  // Low power mode for liquid background
+  const [lowPowerMode, setLowPowerMode] = useState<boolean>(() => {
+    return localStorage.getItem("low_power_mode") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("low_power_mode", String(lowPowerMode));
+  }, [lowPowerMode]);
+
   // Edit Console workspace values
-  const [editTab, setEditTab] = useState<"profile" | "experience" | "skills" | "contact" | "diagnostics">("profile");
+  const [editTab, setEditTab] = useState<"profile" | "experience" | "skills" | "contact" | "settings" | "diagnostics">("profile");
   const [tempData, setTempData] = useState<PortfolioData | null>(null);
 
   // Status for sheet connection feedback
@@ -75,6 +89,7 @@ export default function App() {
   useEffect(() => {
     const tabsList = ["home", "videos", "projects", "skills", "resume", "contact"];
     let touchStartY = 0;
+    let rAFId: number | null = null;
 
     const handleWheel = (e: WheelEvent) => {
       // Ignore scroll-switching if user is actively inside modal screens or transitioning
@@ -99,8 +114,11 @@ export default function App() {
           e.preventDefault();
           lastScrollTimeRef.current = now;
           const target = tabsList[currentIdx + 1];
-          window.scrollTo(0, 0);
-          setCurrentTab(target);
+          if (rAFId) cancelAnimationFrame(rAFId);
+          rAFId = requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+            setCurrentTab(target);
+          });
           console.log(`[Scroll Switch] Next tab trigger: ${target}`);
         }
       } else if (deltaY < 0) {
@@ -109,8 +127,11 @@ export default function App() {
           e.preventDefault();
           lastScrollTimeRef.current = now;
           const target = tabsList[currentIdx - 1];
-          window.scrollTo(0, 0);
-          setCurrentTab(target);
+          if (rAFId) cancelAnimationFrame(rAFId);
+          rAFId = requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+            setCurrentTab(target);
+          });
           console.log(`[Scroll Switch] Previous tab trigger: ${target}`);
         }
       }
@@ -144,16 +165,22 @@ export default function App() {
         if (atBottom && currentIdx < tabsList.length - 1) {
           lastScrollTimeRef.current = now;
           const target = tabsList[currentIdx + 1];
-          window.scrollTo(0, 0);
-          setCurrentTab(target);
+          if (rAFId) cancelAnimationFrame(rAFId);
+          rAFId = requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+            setCurrentTab(target);
+          });
           console.log(`[Swipe Switch] Next tab trigger: ${target}`);
         }
       } else if (diffY < 0) {
         if (atTop && currentIdx > 0) {
           lastScrollTimeRef.current = now;
           const target = tabsList[currentIdx - 1];
-          window.scrollTo(0, 0);
-          setCurrentTab(target);
+          if (rAFId) cancelAnimationFrame(rAFId);
+          rAFId = requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+            setCurrentTab(target);
+          });
           console.log(`[Swipe Switch] Previous tab trigger: ${target}`);
         }
       }
@@ -164,15 +191,21 @@ export default function App() {
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
+      if (rAFId) cancelAnimationFrame(rAFId);
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [currentTab, activeVideo, showEditConsole, showAuthModal, showExploreModal, isTransitioning]);
 
-  // Reset scroll to top instantly on every tab switch
+  // Reset scroll to top instantly on every tab switch synchronizing with browser rendering cycle
   useEffect(() => {
-    window.scrollTo(0, 0);
+    let rAFResetId = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    });
+    return () => {
+      cancelAnimationFrame(rAFResetId);
+    };
   }, [currentTab]);
 
   // Load consolidated sheet / local-edited details
@@ -180,7 +213,7 @@ export default function App() {
     async function load() {
       try {
         setIsLoading(true);
-        const fetched = await getCompletePortfolioData(true);
+        const fetched = await getCompletePortfolioData(false);
         setPortfolioData(fetched);
         
         // Determine sync status representation
@@ -203,20 +236,8 @@ export default function App() {
 
   // Unified modal play hand-off
   const handlePlayVideo = (video: VideoItem) => {
-    let targetUrl = video.videoUrl;
-    
-    // Extrapolate exact Google Drive File ID if present
-    const fileId = getDriveFileId(video.videoUrl);
-    if (fileId) {
-      targetUrl = `https://drive.google.com/file/d/${fileId}/view`;
-    }
-    
-    if (targetUrl) {
-      console.log(`[Video Direct Open] Opening video link: "${targetUrl}"`);
-      window.open(targetUrl, "_blank", "noopener,noreferrer");
-    } else {
-      setActiveVideo(video);
-    }
+    console.log(`[Video Hand-off] Triggering in-app embedded video player modal for: "${video.title}"`);
+    setActiveVideo(video);
   };
 
   const handleExploreAction = () => {
@@ -345,62 +366,9 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen pb-32 text-slate-800 selection:bg-blue-100/60 selection:text-slate-900">
-      {/* Liquid background fluid highlight rings with organic 3D morphing bubbles */}
-      <div className="liquid-glass-bg">
-        {/* Layer 1: Large primary physical crystal spheres reacting dynamically with parallax multipliers */}
-        <motion.div 
-          animate={{ x: bgMouse.x * 0.4, y: bgMouse.y * 0.4 }}
-          transition={{ type: "spring", stiffness: 90, damping: 25 }}
-          className="liquid-blob liquid-blob-cyan left-[4vw] top-[8vh] w-[30vw] h-[30vw] max-w-[320px] max-h-[320px]" 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * -0.5, y: bgMouse.y * -0.5 }}
-          transition={{ type: "spring", stiffness: 100, damping: 22 }}
-          className="liquid-blob liquid-blob-purple right-[6vw] top-[6vh] w-[35vw] h-[35vw] max-w-[360px] max-h-[360px]" 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * 0.3, y: bgMouse.y * 0.6 }}
-          transition={{ type: "spring", stiffness: 80, damping: 20 }}
-          className="liquid-blob liquid-blob-pink left-[8vw] bottom-[12vh] w-[32vw] h-[32vw] max-w-[320px] max-h-[320px]" 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * -0.4, y: bgMouse.y * 0.4 }}
-          transition={{ type: "spring", stiffness: 110, damping: 24 }}
-          className="liquid-blob liquid-blob-indigo right-[12vw] bottom-[14vh] w-[28vw] h-[28vw] max-w-[280px] max-h-[280px]" 
-        />
-
-        {/* Layer 2: Smaller secondary crystal droplets drifting at offsets to create absolute parallax depth */}
-        <motion.div 
-          animate={{ x: bgMouse.x * -0.9, y: bgMouse.y * 0.9 }}
-          transition={{ type: "spring", stiffness: 120, damping: 18 }}
-          className="liquid-blob liquid-blob-purple left-[35vw] top-[25vh] w-[15vw] h-[15vw] max-w-[150px] max-h-[150px] opacity-80" 
-          style={{ animationDelay: "-5s", filter: "blur(4px)" }} 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * 0.8, y: bgMouse.y * -0.7 }}
-          transition={{ type: "spring", stiffness: 130, damping: 19 }}
-          className="liquid-blob liquid-blob-cyan right-[28vw] top-[50vh] w-[18vw] h-[18vw] max-w-[180px] max-h-[180px] opacity-85" 
-          style={{ animationDelay: "-12s", filter: "blur(3px)" }} 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * -0.7, y: bgMouse.y * -0.8 }}
-          transition={{ type: "spring", stiffness: 95, damping: 17 }}
-          className="liquid-blob liquid-blob-pink left-[50vw] bottom-[18vh] w-[16vw] h-[16vw] max-w-[160px] max-h-[160px] opacity-75" 
-          style={{ animationDelay: "-8s", filter: "blur(5px)" }} 
-        />
-        <motion.div 
-          animate={{ x: bgMouse.x * 1.1, y: bgMouse.y * 1.1 }}
-          transition={{ type: "spring", stiffness: 140, damping: 21 }}
-          className="liquid-blob liquid-blob-indigo left-[18vw] top-[65vh] w-[14vw] h-[14vw] max-w-[140px] max-h-[140px] opacity-90" 
-          style={{ animationDelay: "-18s", filter: "blur(2px)" }} 
-        />
-      </div>
-      
-      {/* Animated Atmospheric Background Blurs (Pastel & Soft for immersive light balance) */}
-      <div className="absolute top-[-10%] left-[-10%] w-[55vw] h-[55vw] rounded-full bg-purple-200/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[65vw] h-[65vw] rounded-full bg-blue-200/20 blur-[120px] pointer-events-none" />
-      <div className="absolute top-[20%] right-[10%] w-[45vw] h-[45vw] rounded-full bg-pink-200/25 blur-[120px] pointer-events-none" />
+    <div className="relative min-h-screen pb-32 text-slate-800 selection:bg-blue-100/60 selection:text-slate-900 overflow-x-hidden">
+      {/* Premium responsive hardware-accelerated fluid background */}
+      <InteractiveBackground lowPowerMode={lowPowerMode} />
 
       {/* Scanline / Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] mix-blend-overlay">
@@ -476,28 +444,25 @@ export default function App() {
         )}
       </div>
 
-      {/* RENDER PAGES DYNAMICALLY WITH TRANSLATE-UP FADE TRANSITION */}
+      {/* RENDER PAGES DYNAMICALLY MOUNTED BEHIND HIGH-VISCOSITY LIQUID TRANSLATION OVERLAY */}
       <main className="w-full relative z-20">
         <AnimatePresence mode="wait">
           {isLoading ? (
-            <div className="flex items-center justify-center min-h-[500px]">
-              <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-600 animate-spin" />
-            </div>
+            <CrazyLoadingIndicator />
           ) : (
             <motion.div
               key={currentTab}
-              initial={{ y: 25, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -25, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 220, damping: 28 }}
-              onAnimationStart={() => setIsTransitioning(true)}
-              onAnimationComplete={() => setIsTransitioning(false)}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 1 }}
+              transition={{ duration: 0 }}
             >
               {currentTab === "home" && portfolioData && (
                 <Home 
                   portfolioData={portfolioData}
                   onNavToVideos={() => setCurrentTab("videos")} 
                   onPlayFloatingVdo={handlePlayVideo} 
+                  lowPowerMode={lowPowerMode}
                 />
               )}
               
@@ -512,6 +477,8 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+
 
       {/* FLOAT NAVIGATION BAR PANEL */}
       <BottomNavbar 
@@ -572,113 +539,64 @@ export default function App() {
               {/* Responsive Video/IFrame Viewport rendering */}
               <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
                 {(() => {
-                  const rawUrl = (activeVideo.videoUrl || "").trim();
-                  const resolvedUrl = resolveVideoUrl(rawUrl).trim();
+                  const isMobile = typeof window !== "undefined" && /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent || "");
+                  const details = resolveVideoDetails(activeVideo.driveLink || activeVideo.videoUrl || "");
                   
-                  // If it's matching standard google drive domains or is resolved to drive links, treat universally as direct iframe embeds
-                  const isDrivePreview = rawUrl.includes("drive.google.com") || 
-                                         rawUrl.includes("docs.google.com") ||
-                                         resolvedUrl.includes("drive.google.com") ||
-                                         resolvedUrl.includes("docs.google.com");
-
-                  // YouTube matching
-                  const isYouTube = rawUrl.includes("youtube.com") || 
-                                    rawUrl.includes("youtu.be") ||
-                                    resolvedUrl.includes("youtube.com") ||
-                                    resolvedUrl.includes("youtu.be");
-
-                  // Vimeo matching
-                  const isVimeo = rawUrl.includes("vimeo.com") ||
-                                  resolvedUrl.includes("vimeo.com");
-
-                  if (isDrivePreview) {
-                    // Extract Google Drive File ID dynamically from either URL representation
-                    let fileId = "";
-                    const dMatch = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || resolvedUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                    if (dMatch && dMatch[1]) {
-                      fileId = dMatch[1];
+                  let finalUrl = details.resolvedUrl;
+                  
+                  if (details.detectedType === "youtube" && finalUrl.includes("youtube.com/embed/")) {
+                    if (isMobile) {
+                      finalUrl = finalUrl.replace(/[?&]autoplay=1/, "");
+                      if (!finalUrl.includes("autoplay=")) {
+                        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}autoplay=0`;
+                      }
                     } else {
-                      const idMatch = rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || resolvedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                      if (idMatch && idMatch[1]) {
-                        fileId = idMatch[1];
+                      if (!finalUrl.includes("autoplay=")) {
+                        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}autoplay=1`;
                       }
                     }
+                  }
 
-                    const embedUrl = fileId 
-                      ? `https://drive.google.com/file/d/${fileId}/preview` 
-                      : resolvedUrl;
-
+                  if (details.renderMethod === "iframe") {
                     return (
                       <iframe
                         id="active-portfolio-drive-frame"
-                        src={embedUrl}
-                        allow="autoplay; fullscreen"
+                        src={finalUrl}
+                        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                         allowFullScreen
+                        loading="lazy"
                         className="w-full h-full border-0 absolute inset-0 rounded-2xl"
                       />
                     );
                   }
 
-                  if (isYouTube) {
-                    let ytId = "";
-                    const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                    const match = resolvedUrl.match(ytRegExp);
-                    if (match && match[2].length === 11) {
-                      ytId = match[2];
-                    }
-                    
-                    const embedUrl = ytId 
-                      ? `https://www.youtube.com/embed/${ytId}?autoplay=1` 
-                      : resolvedUrl;
-
+                  if (details.renderMethod === "video") {
                     return (
-                      <iframe
-                        id="active-portfolio-youtube-frame"
-                        src={embedUrl}
-                        allow="autoplay; encrypted-media; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full border-0 absolute inset-0 rounded-2xl"
-                      />
-                    );
-                  }
-
-                  if (isVimeo) {
-                    let vimeoId = "";
-                    const vimRegExp = /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)\d+(?:[^\/]*)\/?/i;
-                    const match = resolvedUrl.match(vimRegExp);
-                    if (match) {
-                      const digits = match[0].match(/\d+/);
-                      if (digits) {
-                        vimeoId = digits[0];
-                      }
-                    }
-
-                    const embedUrl = vimeoId 
-                      ? `https://player.vimeo.com/video/${vimeoId}?autoplay=1` 
-                      : resolvedUrl;
-
-                    return (
-                      <iframe
-                        id="active-portfolio-vimeo-frame"
-                        src={embedUrl}
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full border-0 absolute inset-0 rounded-2xl"
+                      <video
+                        id="active-portfolio-video"
+                        src={finalUrl}
+                        controls
+                        autoPlay={!isMobile}
+                        loop
+                        playsInline
+                        className="w-full h-full object-contain shrink-0"
+                        onError={() => {
+                          console.error(`[Video Playback Error] Video failed to load or play: "${finalUrl}"`);
+                        }}
                       />
                     );
                   }
 
                   return (
-                    <video
-                      id="active-portfolio-video"
-                      src={resolvedUrl}
-                      controls
-                      autoPlay
-                      className="w-full h-full object-contain"
-                      onError={() => {
-                        console.error(`[Video Playback Error] Video failed to load or play: "${resolvedUrl}"`);
-                      }}
-                    />
+                    <div className="w-full h-full absolute inset-0 bg-slate-950 border border-red-500/10 rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-2">
+                      <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
+                        <AlertTriangle size={24} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <h3 className="text-sm font-bold text-slate-200">Unsupported video source</h3>
+                        <p className="text-xs text-slate-400 max-w-sm">The source link provided is not supported. Please configure a valid YouTube watch/embed URL, Google Drive sharing link, or raw assets (.mp4, .webm, .ogg).</p>
+                      </div>
+                    </div>
                   );
                 })()}
               </div>
@@ -739,7 +657,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-md"
             onClick={() => setShowExploreModal(false)}
           >
             <motion.div
@@ -748,7 +666,7 @@ export default function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.92, y: 30 }}
               transition={{ type: "spring", stiffness: 300, damping: 24 }}
-              className="relative w-full max-w-xl bg-[#120b1e]/95 border border-white/15 backdrop-blur-3xl rounded-3xl p-6 sm:p-8 shadow-2xl glass-shadow flex flex-col gap-6"
+              className="relative w-full max-w-md bg-[#120b1e]/45 border border-white/10 backdrop-blur-3xl rounded-3xl p-5 sm:p-6 shadow-2xl glass-shadow flex flex-col gap-5"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -800,7 +718,7 @@ export default function App() {
                   };
 
                   return (
-                    <div id="social-links-grid" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                    <div id="social-links-grid" className="grid grid-cols-1 gap-2.5 mt-1">
                       {items.map((social, idx) => {
                         const url = social.directUrl || (() => {
                           const name = social.platform.toLowerCase();
@@ -862,15 +780,15 @@ export default function App() {
 
 
 
-      {/* CORE PORTFOLIO EDIT WORKSPACE CONSOLE DISABLED */}
+      {/* CORE PORTFOLIO EDIT WORKSPACE CONSOLE */}
       <AnimatePresence>
-        {false && showEditConsole && tempData && (
+        {showEditConsole && tempData && (
           <motion.div
             id="edit-console-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md"
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-md"
             onClick={() => setShowEditConsole(false)}
           >
             <motion.div
@@ -878,7 +796,7 @@ export default function App() {
               initial={{ scale: 0.95, y: 40 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 40 }}
-              className="relative w-full max-w-3xl h-[85vh] bg-[#10091c]/95 border border-white/15 rounded-3xl p-6 shadow-2xl glass-shadow flex flex-col gap-5 select-none"
+              className="relative w-full max-w-2xl h-[85vh] bg-[#10091c]/65 border border-white/10 backdrop-blur-3xl rounded-3xl p-6 shadow-2xl glass-shadow flex flex-col gap-5 select-none"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header section console */}
@@ -916,7 +834,7 @@ export default function App() {
 
               {/* Navigation Workspace Menu Tabs */}
               <div className="flex gap-1 border-b border-white/5 pb-2 shrink-0 overflow-x-auto">
-                {(["profile", "experience", "skills", "contact", "diagnostics"] as const).map((tab) => (
+                {(["profile", "experience", "skills", "contact", "settings", "diagnostics"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setEditTab(tab)}
@@ -1197,6 +1115,50 @@ export default function App() {
                   </div>
                 )}
 
+                {/* 5. System Settings & Performance */}
+                {editTab === "settings" && (
+                  <div className="flex flex-col gap-5 font-sans">
+                    <div className="p-4 rounded-xl bg-purple-900/10 border border-purple-500/20 text-left">
+                      <h4 className="font-extrabold text-xs text-purple-300 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                        <Settings size={13} className="text-purple-400" />
+                        <span>System Performance</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                        Fine-tune background visuals, render complexity, and animations to preserve system resources or extend battery life.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex flex-col gap-4 text-left">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-1 max-w-[75%]">
+                          <span className="text-xs font-bold uppercase tracking-widest text-slate-200 font-sans">
+                            Reduce Motion (Battery Saver)
+                          </span>
+                          <span className="text-[10px] text-slate-400 leading-normal font-sans">
+                            Maintains 2 primary liquid background blobs instead of 8 to minimize painting calculations on mobile screens or hardware-constrained monitors.
+                          </span>
+                        </div>
+
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={lowPowerMode}
+                            onChange={(e) => setLowPowerMode(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className={`
+                            w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer 
+                            peer-checked:after:translate-x-full peer-checked:after:border-white 
+                            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                            after:bg-slate-300 after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 
+                            after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white peer-checked:after:border-transparent
+                          `}></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {editTab === "diagnostics" && (
                   <div className="flex flex-col gap-4 text-slate-300">
                     <div className="p-4 rounded-2xl bg-purple-900/10 border border-purple-500/20">
@@ -1281,6 +1243,87 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* PASSCODE AUTHENTICATION MODAL */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div
+            id="auth-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-md"
+            onClick={() => setShowAuthModal(false)}
+          >
+            <motion.div
+              id="auth-modal-card"
+              initial={{ scale: 0.95, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 30 }}
+              transition={{ type: "spring", stiffness: 300, damping: 24 }}
+              className="relative w-full max-w-xs bg-[#120b1e]/45 border border-white/10 backdrop-blur-3xl rounded-3xl p-5 shadow-2xl glass-shadow flex flex-col gap-4 font-sans"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white cursor-pointer transition-colors"
+              >
+                <X size={15} />
+              </button>
+
+              <div className="flex items-center gap-3.5 border-b border-white/10 pb-4 text-left">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-400/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <Lock size={18} className="stroke-[2.5px]" />
+                </div>
+                <div className="flex flex-col">
+                  <h3 className="font-extrabold text-sm sm:text-base text-white tracking-wide uppercase">Console Access</h3>
+                  <p className="text-[10px] font-semibold text-slate-400">Enter passcode to modify local configurations</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleVerifyPasscode} className="flex flex-col gap-4 text-left">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Authorization Code</label>
+                  <input
+                    type="password"
+                    value={passcodeInput}
+                    onChange={(e) => setPasscodeInput(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/5 rounded-xl border border-white/10 text-xs font-bold text-white focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-colors"
+                    placeholder="Enter Premium Code Key"
+                    autoFocus
+                  />
+                  {authError && (
+                    <span className="text-[10px] font-bold text-rose-400 pl-0.5 mt-1 block">
+                      {authError}
+                    </span>
+                  )}
+                  <p className="text-[9.5px] leading-relaxed text-slate-500 pl-0.5">
+                    Hint: Use standard portfolio passcode <code className="text-purple-450 font-semibold font-mono bg-white/5 px-1 py-0.5 rounded">EDIRUOTW</code>.
+                  </p>
+                </div>
+
+                <div className="flex gap-3.5 justify-end border-t border-white/10 pt-4 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(false)}
+                    className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-shadow"
+                  >
+                    Authorize
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
 
     </div>
   );

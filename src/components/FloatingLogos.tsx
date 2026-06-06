@@ -354,6 +354,10 @@ export default function FloatingLogos({ logos }: FloatingLogosProps) {
         const driftY = [y, y + (idx % 2 === 0 ? -14 : 14), y + (idx % 3 === 0 ? 8 : -8), y];
         const driftRotate = [0, idx % 2 === 0 ? 4 : -4, idx % 3 === 0 ? -2 : 2, 0];
 
+        const animX = isMobile ? x : (isHovered ? x : driftX);
+        const animY = isMobile ? y : (isHovered ? y : driftY);
+        const animRotate = isMobile ? 0 : (isHovered ? 0 : driftRotate);
+
         return (
           <motion.div
             id={`orbital-logo-${logo.name.replace(/\s+/g, "-")}`}
@@ -361,12 +365,16 @@ export default function FloatingLogos({ logos }: FloatingLogosProps) {
             className="absolute pointer-events-auto z-20"
             initial={{ scale: 0, opacity: 0 }}
             animate={{
-              x: isHovered ? x : driftX,
-              y: isHovered ? y : driftY,
-              rotate: isHovered ? 0 : driftRotate,
-              scale: isHovered ? 1.25 : 1
+              x: animX,
+              y: animY,
+              rotate: animRotate,
+              scale: isHovered ? (isMobile ? 1.15 : 1.25) : 1
             }}
-            transition={{
+            transition={isMobile ? {
+              type: "spring",
+              stiffness: 150,
+              damping: 20
+            } : {
               x: {
                 duration: 8 + (idx % 3) * 2,
                 repeat: Infinity,
@@ -422,9 +430,11 @@ export default function FloatingLogos({ logos }: FloatingLogosProps) {
               `}
               title={logo.name}
               style={{
-                boxShadow: isHovered 
-                  ? `0 12px 24px -2px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 0 20px ${logo.glowColor}`
-                  : `0 6px 12px 0 rgba(0, 0, 0, 0.18), inset 0 2px 4px rgba(255, 255, 255, 0.35), 0 0 10px ${logo.glowColor}`,
+                boxShadow: isMobile
+                  ? undefined
+                  : (isHovered 
+                      ? `0 12px 24px -2px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 0 20px ${logo.glowColor}`
+                      : `0 6px 12px 0 rgba(0, 0, 0, 0.18), inset 0 2px 4px rgba(255, 255, 255, 0.35), 0 0 10px ${logo.glowColor}`),
               }}
             >
               {isHovered && (

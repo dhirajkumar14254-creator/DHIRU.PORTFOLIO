@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, SlidersHorizontal, ArrowLeft, ArrowRight, Play, X, Compass, ExternalLink, FileText, Check, Copy, Film } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowLeft, ArrowRight, Play, X, Compass, ExternalLink, FileText, Check, Copy, Film, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VideoCard from "../components/VideoCard";
 import GlassCard from "../components/GlassCard";
@@ -7,6 +7,7 @@ import { getVideosList } from "../utils/googleSheet";
 import { VideoItem, PortfolioData } from "../types";
 import UniversalVideoPlayer from "../components/UniversalVideoPlayer";
 import profilePic from "../assets/images/regenerated_image_1780652478984.png";
+import { resolveVideoDetails } from "../utils/videoResolver";
 
 interface VideosProps {
   onPlaySelected: (video: VideoItem) => void;
@@ -338,26 +339,66 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
                   </div>
 
                   <div className="flex-grow w-full relative rounded-2xl overflow-hidden bg-black border border-white/5 shadow-inner">
-                    {/* Render standard direct video tag vs Google Drive view iframe */}
-                    {!(activeStreamVideo.videoUrl.includes("drive.google.com") || activeStreamVideo.videoUrl.includes("docs.google.com")) ? (
-                      <video
-                        id="stage-video-core"
-                        src={activeStreamVideo.videoUrl}
-                        className="w-full h-full object-contain absolute inset-0 bg-black"
-                        controls
-                        autoPlay
-                        loop
-                        playsInline
-                      />
-                    ) : (
-                      <iframe
-                        src={activeStreamVideo.videoUrl}
-                        className="w-full h-full absolute inset-0 border-none bg-black"
-                        title={activeStreamVideo.title}
-                        allow="autoplay; fullscreen"
-                        allowFullScreen
-                      />
-                    )}
+                    {(() => {
+                      const isMobile = typeof window !== "undefined" && /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent || "");
+                      const details = resolveVideoDetails(activeStreamVideo.driveLink || activeStreamVideo.videoUrl || "");
+                      
+                      let finalUrl = details.resolvedUrl;
+                      
+                      // Autoplay parameters adjusted for mobile constraints
+                      if (details.detectedType === "youtube" && finalUrl.includes("youtube.com/embed/")) {
+                        if (isMobile) {
+                          finalUrl = finalUrl.replace(/[?&]autoplay=1/, "");
+                          if (!finalUrl.includes("autoplay=")) {
+                            finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}autoplay=0`;
+                          }
+                        } else {
+                          if (!finalUrl.includes("autoplay=")) {
+                            finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}autoplay=1`;
+                          }
+                        }
+                      }
+
+                      if (details.renderMethod === "iframe") {
+                        return (
+                          <iframe
+                            src={finalUrl}
+                            className="w-full h-full absolute inset-0 border-none bg-black"
+                            title={activeStreamVideo.title}
+                            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                          />
+                        );
+                      }
+
+                      if (details.renderMethod === "video") {
+                        return (
+                          <video
+                            id="stage-video-core"
+                            src={finalUrl}
+                            className="w-full h-full object-contain absolute inset-0 bg-black"
+                            controls
+                            autoPlay={!isMobile}
+                            loop
+                            playsInline
+                          />
+                        );
+                      }
+
+                      // Render a elegant placeholder for unsupported or error states
+                      return (
+                        <div className="w-full h-full absolute inset-0 bg-slate-950 border border-red-500/10 rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
+                            <AlertTriangle size={24} />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <h3 className="text-sm font-bold text-slate-200">Unsupported video source</h3>
+                            <p className="text-xs text-slate-400 max-w-sm">The source link provided is not supported. Please configure a valid YouTube watch/embed URL, Google Drive sharing link, or raw assets (.mp4, .webm, .ogg).</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

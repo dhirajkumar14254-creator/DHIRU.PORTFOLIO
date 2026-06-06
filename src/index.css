@@ -138,7 +138,7 @@ body {
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border: 1.5px solid rgba(255, 255, 255, 0.95);
-  transition: all 1.2s ease-in-out;
+  transition: border-radius 2.5s ease-in-out, border 1.5s ease-in-out, opacity 0.8s ease-in-out;
 }
 
 /* Beautiful ultra-tactile 3D radial specularity styles representing real cut crystal bubbles */

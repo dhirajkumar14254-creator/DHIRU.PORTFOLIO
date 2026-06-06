@@ -29,7 +29,10 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
   const [contactError, setContactError] = useState("");
   const [copiedPdf, setCopiedPdf] = useState(false);
   const [copiedHtml, setCopiedHtml] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [resumeViewerMode, setResumeViewerMode] = useState<"compiled" | "pdf" | "html">("compiled");
+
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbystF6f8QqI-r0CsHW46Ch93dtqPwiNk9p1b051HySkCVwwClAwYPIw_k317gj8rKN_Ug/exec";
 
   if (!portfolioData) {
     return (
@@ -40,16 +43,45 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
   }
 
   // Handle slide form submit
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.name || !formState.email || !formState.message) {
       setContactError("Please fill out all fields before sending.");
       return;
     }
     setContactError("");
-    setFormSubmitted(true);
-    setFormState({ name: "", email: "", message: "" });
-    setTimeout(() => setFormSubmitted(false), 5000); // hide bubble after 5s
+    setIsSending(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("name", formState.name);
+      formData.append("email", formState.email);
+      formData.append("message", formState.message);
+
+      const response = await fetch(scriptUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.success === true) {
+        setFormSubmitted(true);
+        setFormState({ name: "", email: "", message: "" });
+        setTimeout(() => setFormSubmitted(false), 6000); // hide success bubble after 6s
+      } else {
+        const errorMsg = (data && data.error) || (data && data.message) || "Failed to deliver message via Web App.";
+        setContactError(errorMsg);
+      }
+    } catch (err: any) {
+      console.error("Direct Message API Error:", err);
+      setContactError(err.message || String(err));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Render PROJECTS / WORK Timeline View
@@ -194,25 +226,13 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
 
     return (
       <div id="resume-page-container" className="w-full max-w-3xl mx-auto py-12 px-4 flex flex-col gap-8 pb-32">
-        <div className="text-center flex flex-col items-center gap-2">
+        <div className="text-center flex flex-col items-center gap-2 font-sans">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-800 mb-1 uppercase tracking-wide">
             Professional <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 font-sans">Resume</span>
           </h2>
-          <p className="text-sm text-slate-500 font-medium mb-2">View or print my structural curriculum vitae.</p>
+          <p className="text-sm text-slate-500 font-semibold mb-2">View my structural curriculum vitae.</p>
 
           <div className="flex flex-wrap gap-2.5 justify-center items-center">
-            <button
-              id="print-resume-btn"
-              onClick={() => window.print()}
-              className="
-                px-6 py-2.5 bg-white/45 hover:bg-white/70 border border-white/70 rounded-full text-slate-800 text-xs font-bold leading-none uppercase tracking-widest
-                flex items-center gap-2 cursor-pointer shadow-sm transition-all duration-300 hover:scale-105 active:scale-95
-              "
-            >
-              <FileText size={14} />
-              <span>Print / Save PDF</span>
-            </button>
-
             {resumeItem && (
               <>
                 {resumeItem.pdfDriveLink && (
@@ -289,95 +309,6 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
               transition={{ duration: 0.3 }}
               className="flex flex-col gap-8 w-full"
             >
-              {/* Live Fed Spreadsheet Integration Links Panel */}
-              {resumeItem && (
-                <div className="w-full bg-white/20 border border-white/40 backdrop-blur-md rounded-[24px] p-6 text-left flex flex-col gap-4 shadow-sm print:hidden">
-                  <div className="flex items-center justify-between border-b border-indigo-500/10 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-[pulse_1.5s_infinite]" />
-                      <h4 className="text-xs font-bold font-mono text-indigo-700 tracking-wider uppercase">
-                        Connected Google Sheet: RESUME Segment
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-bold font-mono text-slate-450 uppercase select-none p-1 bg-slate-500/5 rounded">
-                      Live Sync Active
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* PDF Drive Link Card */}
-                    <div className="bg-white/45 border border-white/60 p-4 rounded-2xl flex flex-col justify-between gap-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                            CV PDF File Link
-                          </span>
-                          <button
-                            onClick={() => copyToClipboard(resumeItem.pdfDriveLink || "", true)}
-                            className="p-1 text-slate-450 hover:text-indigo-650 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1 text-[9px] font-bold font-mono"
-                            title="Copy raw link to clipboard"
-                          >
-                            {copiedPdf ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
-                            <span>{copiedPdf ? "Copied!" : "Copy Raw"}</span>
-                          </button>
-                        </div>
-                        <p className="text-xs font-bold text-slate-800 break-all select-all font-mono bg-white/30 p-2 rounded-xl border border-white/40 mt-1">
-                          {resumeItem.pdfDriveLink || "No physical link uploaded yet."}
-                        </p>
-                        {resumeItem.pdfDriveLink && !resumeItem.pdfDriveLink.startsWith("http") && (
-                          <span className="text-[9px] font-bold text-slate-450 italic mt-1">
-                            Relative filename resolved directly from live deployment directory.
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setResumeViewerMode("pdf")}
-                        className="w-full mt-2 py-2 text-center bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <FileText size={13} className="text-red-500" />
-                        <span>Preview Live PDF Player</span>
-                      </button>
-                    </div>
-
-                    {/* HTML Link Card */}
-                    <div className="bg-white/45 border border-white/60 p-4 rounded-2xl flex flex-col justify-between gap-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                            CV HTML Link
-                          </span>
-                          <button
-                            onClick={() => copyToClipboard(resumeItem.htmlLink || "", false)}
-                            className="p-1 text-slate-450 hover:text-indigo-650 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1 text-[9px] font-bold font-mono"
-                            title="Copy raw link to clipboard"
-                          >
-                            {copiedHtml ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
-                            <span>{copiedHtml ? "Copied!" : "Copy Raw"}</span>
-                          </button>
-                        </div>
-                        <p className="text-xs font-bold text-slate-800 break-all select-all font-mono bg-white/30 p-2 rounded-xl border border-white/40 mt-1">
-                          {resumeItem.htmlLink || "No custom HTML link uploaded yet."}
-                        </p>
-                        {resumeItem.htmlLink && (resumeItem.htmlLink.startsWith("file://") || resumeItem.htmlLink.includes("Users/")) && (
-                          <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max mt-1.5 select-none">
-                            💡 Spliced dynamically to active HTML viewer file!
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setResumeViewerMode("html")}
-                        className="w-full mt-2 py-2 text-center bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <ExternalLink size={13} />
-                        <span>Preview Live Web Stream</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* CV sheet representation */}
               <div
                 id="resume-sheet"
@@ -386,7 +317,7 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                 {/* Header CV details */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200">
                   <div className="flex flex-col text-left">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-800">DHIRAJ KUMAR</h1>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 uppercase">DHIRAJ KUMAR</h1>
                     <span className="text-sm font-bold text-blue-600 tracking-wider uppercase mt-1">Professional Video Editor</span>
                   </div>
                   <div className="flex flex-col text-xs font-sans font-bold text-slate-600 gap-1.5 md:text-right text-left">
@@ -398,14 +329,14 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
 
                 {/* Section: Profile info */}
                 <div className="flex flex-col gap-3 text-left">
-                  <h3 className="text-sm font-sans font-bold text-indigo-600 uppercase tracking-widest">Career Summary</h3>
+                  <h3 className="text-sm font-sans font-bold text-indigo-600 uppercase tracking-widest font-sans">Career Summary</h3>
                   <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-semibold whitespace-pre-wrap">
                     {portfolioData.aboutMe}
                   </p>
                 </div>
 
                 {/* Section: Employment */}
-                <div className="flex flex-col gap-5 text-left">
+                <div className="flex flex-col gap-5 text-left font-sans">
                   <h3 className="text-sm font-sans font-bold text-indigo-600 uppercase tracking-widest border-b border-slate-200 pb-1">Work History</h3>
                   
                   {portfolioData.experiences.map((exp, idx) => (
@@ -424,7 +355,7 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                 </div>
 
                 {/* Section: Tools */}
-                <div className="flex flex-col gap-3 text-left">
+                <div className="flex flex-col gap-3 text-left font-sans">
                   <h3 className="text-sm font-sans font-bold text-indigo-600 uppercase tracking-widest border-b border-slate-200 pb-1">Software & Tools</h3>
                   <div className="flex flex-wrap gap-2 text-left">
                     {portfolioData.skills.map((s, i) => (
@@ -435,6 +366,95 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                   </div>
                 </div>
               </div>
+
+              {/* Relocated "Connected Google Sheet: RESUME Segment" panel to the bottom downside */}
+              {resumeItem && (
+                <div className="w-full bg-white/10 border border-white/30 backdrop-blur-md rounded-[24px] p-5 text-left flex flex-col gap-4 shadow-sm print:hidden">
+                  <div className="flex items-center justify-between border-b border-indigo-500/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-[pulse_1.5s_infinite]" />
+                      <h4 className="text-xs font-bold font-mono text-indigo-700 tracking-wider uppercase">
+                        Connected Google Sheet: RESUME Segment
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold font-mono text-slate-400 uppercase select-none p-1 bg-slate-500/5 rounded animate-pulse">
+                      Live Sync Active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* PDF Drive Link Card */}
+                    <div className="bg-white/45 border border-white/60 p-4 rounded-2xl flex flex-col justify-between gap-3">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider font-sans">
+                            CV PDF File Link
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(resumeItem.pdfDriveLink || "", true)}
+                            className="p-1 text-slate-450 hover:text-indigo-650 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1 text-[9px] font-bold font-mono"
+                            title="Copy raw link to clipboard"
+                          >
+                            {copiedPdf ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                            <span>{copiedPdf ? "Copied!" : "Copy Raw"}</span>
+                          </button>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 break-all select-all font-mono bg-white/30 p-2 rounded-xl border border-white/40 mt-1">
+                          {resumeItem.pdfDriveLink || "No physical link uploaded yet."}
+                        </p>
+                        {resumeItem.pdfDriveLink && !resumeItem.pdfDriveLink.startsWith("http") && (
+                          <span className="text-[9px] font-bold text-slate-450 italic mt-1 font-sans">
+                            Relative filename resolved directly from live deployment directory.
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setResumeViewerMode("pdf")}
+                        className="w-full mt-2 py-2 text-center bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs font-sans"
+                      >
+                        <FileText size={13} className="text-red-500 font-sans" />
+                        <span>Preview Live PDF Player</span>
+                      </button>
+                    </div>
+
+                    {/* HTML Link Card */}
+                    <div className="bg-white/45 border border-white/60 p-4 rounded-2xl flex flex-col justify-between gap-3">
+                      <div className="flex flex-col gap-1 font-sans">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider font-sans">
+                            CV HTML Link
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(resumeItem.htmlLink || "", false)}
+                            className="p-1 text-slate-450 hover:text-indigo-650 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1 text-[9px] font-bold font-mono"
+                            title="Copy raw link to clipboard font-sans"
+                          >
+                            {copiedHtml ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                            <span>{copiedHtml ? "Copied!" : "Copy Raw"}</span>
+                          </button>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 break-all select-all font-mono bg-white/30 p-2 rounded-xl border border-white/40 mt-1">
+                          {resumeItem.htmlLink || "No custom HTML link uploaded yet."}
+                        </p>
+                        {resumeItem.htmlLink && (resumeItem.htmlLink.startsWith("file://") || resumeItem.htmlLink.includes("Users/")) && (
+                          <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max mt-1.5 select-none font-sans">
+                            💡 Spliced dynamically to active HTML viewer file!
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setResumeViewerMode("html")}
+                        className="w-full mt-2 py-2 text-center bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs font-sans"
+                      >
+                        <ExternalLink size={13} />
+                        <span>Preview Live Web Stream</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -548,6 +568,8 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
 
   // Render GET IN TOUCH / CONTACT form View
   if (currentTab === "contact") {
+    const formattedTime = new Date().toLocaleString();
+    const formattedDate = new Date().toLocaleDateString();
     return (
       <div id="contact-page-container" className="w-full max-w-4xl mx-auto py-12 px-4 flex flex-col gap-8 pb-32">
         <div className="text-center">
@@ -598,7 +620,7 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
 
               {/* Dynamic Social links fetched in real-time from sheet */}
               {portfolioData.socialLinks && portfolioData.socialLinks.length > 0 && (
-                <div className="pt-4 border-t border-slate-200 flex flex-col gap-2 text-left">
+                <div className="pt-4 border-t border-slate-200 flex flex-col gap-2 text-left font-sans">
                   <span className="text-[10px] font-sans font-bold text-slate-400 tracking-widest uppercase mb-1">Social Profiles</span>
                   <div className="flex flex-wrap gap-2 text-left">
                     {portfolioData.socialLinks.map((social, idx) => (
@@ -645,12 +667,15 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                   <input
                     id="contact-name-input"
                     type="text"
+                    required
+                    disabled={isSending}
                     value={formState.name}
                     onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                    placeholder="Dnirod Kumar"
+                    placeholder="Dhiraj Kumar"
                     className="
                       w-full px-4 py-2.5 bg-white/60 rounded-xl border border-white/80 text-sm font-semibold text-slate-800
                       placeholder-slate-400/80 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-md transition-all duration-300 shadow-inner
+                      disabled:opacity-50
                     "
                   />
                 </div>
@@ -660,12 +685,15 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                   <input
                     id="contact-email-input"
                     type="email"
+                    required
+                    disabled={isSending}
                     value={formState.email}
                     onChange={(e) => setFormState({ ...formState, email: e.target.value })}
                     placeholder="you@domain.com"
                     className="
                       w-full px-4 py-2.5 bg-white/60 rounded-xl border border-white/80 text-sm font-semibold text-slate-800
                       placeholder-slate-400/80 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-md transition-all duration-300 shadow-inner
+                      disabled:opacity-50
                     "
                   />
                 </div>
@@ -675,12 +703,15 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                   <textarea
                     id="contact-msg-textarea"
                     rows={4}
+                    required
+                    disabled={isSending}
                     value={formState.message}
                     onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                    placeholder="Describe your editing project..."
+                    placeholder="Describe your editing project or opportunity..."
                     className="
                       w-full px-4 py-2.5 bg-white/60 rounded-xl border border-white/80 text-sm font-semibold text-slate-800
                       placeholder-slate-400/80 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-md transition-all duration-300 resize-none shadow-inner
+                      disabled:opacity-50
                     "
                   />
                 </div>
@@ -688,18 +719,23 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
                 <button
                   id="submit-contact-form"
                   type="submit"
+                  disabled={isSending}
                   className="
                     mt-2 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest
                     shadow-md hover:scale-101 active:scale-99 transition-all duration-300 cursor-pointer text-center border border-white/20 hover:shadow-lg
+                    disabled:opacity-75 flex items-center justify-center gap-2
                   "
                 >
-                  Send Message
+                  {isSending && <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin shrink-0 font-sans" />}
+                  <span>{isSending ? "Sending Message..." : "Send Message"}</span>
                 </button>
               </form>
             </GlassCard>
           </div>
 
         </div>
+
+
 
         {/* Global floating success alert bubble */}
         <AnimatePresence>
@@ -711,11 +747,11 @@ export default function SecondaryPages({ currentTab, portfolioData }: SecondaryP
               exit={{ y: 30, opacity: 0, scale: 0.95 }}
               className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4"
             >
-              <div className="flex items-center gap-3.5 px-6 py-4.5 bg-white/90 backdrop-blur-2xl border border-emerald-500/30 rounded-2xl glass-shadow shadow-xl">
+              <div className="flex items-center gap-3.5 px-6 py-4.5 bg-white/95 backdrop-blur-2xl border border-emerald-500/30 rounded-2xl glass-shadow shadow-xl text-left font-sans">
                 <CheckCircle size={28} className="text-emerald-500 stroke-[2.5px] animate-bounce shrink-0" />
                 <div className="flex flex-col text-left">
-                  <h4 className="font-bold text-sm tracking-wide uppercase text-indigo-600 leading-none text-left">Message Sent!</h4>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-semibold text-left">Thank you for your dispatch. Dhiraj Kumar will review it shortly!</p>
+                  <h4 className="font-bold text-sm tracking-wide uppercase text-indigo-600 leading-none">Message Sent!</h4>
+                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-semibold">Thank you for your dispatch. Message saved securely on your portfolio!</p>
                 </div>
               </div>
             </motion.div>
