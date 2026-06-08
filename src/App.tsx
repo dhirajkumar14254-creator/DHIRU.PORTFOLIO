@@ -55,6 +55,20 @@ export default function App() {
     };
   }, []);
 
+  // Freezes CSS animations / repaints on unmapped backgrounds when tab is inactive
+  useEffect(() => {
+    const handleActiveState = () => {
+      if (document.hidden) {
+        document.documentElement.classList.add("document-hidden");
+      } else {
+        document.documentElement.classList.remove("document-hidden");
+      }
+    };
+    document.addEventListener("visibilitychange", handleActiveState, { passive: true });
+    handleActiveState();
+    return () => document.removeEventListener("visibilitychange", handleActiveState);
+  }, []);
+
   // Central state representing live Google Sheet & Local Storage data
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +130,6 @@ export default function App() {
           const target = tabsList[currentIdx + 1];
           if (rAFId) cancelAnimationFrame(rAFId);
           rAFId = requestAnimationFrame(() => {
-            window.scrollTo({ top: 0, behavior: "auto" });
             setCurrentTab(target);
           });
           console.log(`[Scroll Switch] Next tab trigger: ${target}`);
@@ -129,7 +142,6 @@ export default function App() {
           const target = tabsList[currentIdx - 1];
           if (rAFId) cancelAnimationFrame(rAFId);
           rAFId = requestAnimationFrame(() => {
-            window.scrollTo({ top: 0, behavior: "auto" });
             setCurrentTab(target);
           });
           console.log(`[Scroll Switch] Previous tab trigger: ${target}`);
@@ -167,7 +179,6 @@ export default function App() {
           const target = tabsList[currentIdx + 1];
           if (rAFId) cancelAnimationFrame(rAFId);
           rAFId = requestAnimationFrame(() => {
-            window.scrollTo({ top: 0, behavior: "auto" });
             setCurrentTab(target);
           });
           console.log(`[Swipe Switch] Next tab trigger: ${target}`);
@@ -178,7 +189,6 @@ export default function App() {
           const target = tabsList[currentIdx - 1];
           if (rAFId) cancelAnimationFrame(rAFId);
           rAFId = requestAnimationFrame(() => {
-            window.scrollTo({ top: 0, behavior: "auto" });
             setCurrentTab(target);
           });
           console.log(`[Swipe Switch] Previous tab trigger: ${target}`);
@@ -198,15 +208,7 @@ export default function App() {
     };
   }, [currentTab, activeVideo, showEditConsole, showAuthModal, showExploreModal, isTransitioning]);
 
-  // Reset scroll to top instantly on every tab switch synchronizing with browser rendering cycle
-  useEffect(() => {
-    let rAFResetId = requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "auto" });
-    });
-    return () => {
-      cancelAnimationFrame(rAFResetId);
-    };
-  }, [currentTab]);
+  // Scrolling is perfectly handled on exit-completion inside AnimatePresence below, preventing layout jumps
 
   // Load consolidated sheet / local-edited details
   useEffect(() => {
@@ -446,16 +448,22 @@ export default function App() {
 
       {/* RENDER PAGES DYNAMICALLY MOUNTED BEHIND HIGH-VISCOSITY LIQUID TRANSLATION OVERLAY */}
       <main className="w-full relative z-20">
-        <AnimatePresence mode="wait">
+        <AnimatePresence 
+          mode="wait"
+          onExitComplete={() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+          }}
+        >
           {isLoading ? (
             <CrazyLoadingIndicator />
           ) : (
             <motion.div
               key={currentTab}
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 1 }}
-              transition={{ duration: 0 }}
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -22 }}
+              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+              style={{ willChange: "transform, opacity" }}
             >
               {currentTab === "home" && portfolioData && (
                 <Home 

@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "motion/react";
+import React, { useMemo } from "react";
+import { motion, useReducedMotion } from "motion/react";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -20,12 +20,15 @@ export default function GlassCard({
   id,
   ...props
 }: GlassCardProps) {
-  const hoverProps = hoverScale
-    ? {
-        whileHover: { y: -8, scale: 1.02, boxShadow: "0 20px 40px 0 rgba(139, 92, 246, 0.25)" },
-        whileTap: { scale: 0.98 },
-      }
-    : {};
+  const shouldReduceMotion = useReducedMotion();
+
+  const hoverProps = useMemo(() => {
+    if (!hoverScale || shouldReduceMotion) return {};
+    return {
+      whileHover: { y: -6, scale: 1.015 },
+      whileTap: { scale: 0.985 },
+    };
+  }, [hoverScale, shouldReduceMotion]);
 
   return (
     <motion.div
@@ -33,11 +36,12 @@ export default function GlassCard({
       onClick={onClick}
       {...hoverProps}
       {...props}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      transition={{ type: "spring", stiffness: 260, damping: 25 }}
+      style={{ willChange: "transform" }}
       className={`
         relative overflow-hidden rounded-[30px] 
         liquid-glass-card
-        transition-all duration-300
+        transition-colors duration-300
         ${onClick ? "cursor-pointer" : ""}
         ${className}
       `}

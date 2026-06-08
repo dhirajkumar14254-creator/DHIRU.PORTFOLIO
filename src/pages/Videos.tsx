@@ -23,6 +23,12 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
   const [videoViewerMode, setVideoViewerMode] = useState<"gallery" | "player">("gallery");
   const [activeStreamVideo, setActiveStreamVideo] = useState<VideoItem | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isPlayingActiveStream, setIsPlayingActiveStream] = useState(false);
+
+  // Auto reset play cover state when we switch current stream selection
+  useEffect(() => {
+    setIsPlayingActiveStream(false);
+  }, [activeStreamVideo?.id]);
 
   const itemsPerPage = 8; // Fits 8 cards matching the mockup image!
 
@@ -336,10 +342,42 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
                         <ExternalLink size={11} />
                       </a>
                     </div>
-                  </div>
-
-                  <div className="flex-grow w-full relative rounded-2xl overflow-hidden bg-black border border-white/5 shadow-inner">
-                    {(() => {
+                  </div>                  <div className="flex-grow w-full relative rounded-2xl overflow-hidden bg-black border border-white/5 shadow-inner">
+                    {!isPlayingActiveStream ? (
+                      <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-950 overflow-hidden group">
+                        <img
+                          src={activeStreamVideo.thumbnail}
+                          alt={activeStreamVideo.title}
+                          className="w-full h-full object-cover opacity-60 transition-transform duration-700 hover:scale-103"
+                          referrerPolicy="no-referrer"
+                        />
+                        {/* Play Overlay Screen Gloss */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/25" />
+                        
+                        {/* Action play trigger overlay container */}
+                        <button
+                          id="play-active-stream-btn"
+                          onClick={() => setIsPlayingActiveStream(true)}
+                          className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-transparent outline-none border-none cursor-pointer z-30"
+                        >
+                          <motion.div
+                            whileHover={{ scale: 1.12 }}
+                            whileTap={{ scale: 0.93 }}
+                            className="w-18 h-18 rounded-full bg-white/90 text-slate-900 flex items-center justify-center shadow-2xl relative z-40 transition-all bubble-gloss"
+                          >
+                            <Play size={28} className="fill-slate-900 stroke-none translate-x-1" />
+                          </motion.div>
+                          <div className="text-center z-40">
+                            <span className="text-xs sm:text-sm font-sans font-black text-white uppercase tracking-widest block drop-shadow-md">
+                              TAP TO LOAD STREAM PREVIEW
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mt-1 drop-shadow-sm">
+                              Premium Direct Link {activeStreamVideo.duration ? `• ${activeStreamVideo.duration}` : ""}
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    ) : (() => {
                       const isMobile = typeof window !== "undefined" && /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent || "");
                       const details = resolveVideoDetails(activeStreamVideo.driveLink || activeStreamVideo.videoUrl || "");
                       
@@ -379,14 +417,14 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
                             src={finalUrl}
                             className="w-full h-full object-contain absolute inset-0 bg-black"
                             controls
-                            autoPlay={!isMobile}
+                            autoPlay={true}
                             loop
                             playsInline
                           />
                         );
                       }
 
-                      // Render a elegant placeholder for unsupported or error states
+                      // Render an elegant placeholder for unsupported or error states
                       return (
                         <div className="w-full h-full absolute inset-0 bg-slate-950 border border-red-500/10 rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-2">
                           <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
