@@ -303,25 +303,49 @@ html.document-hidden ::after {
   animation-play-state: paused !important;
 }
 
-/* Prevent horizontal layout shifts / viewport wobble on mobile */
+/* Prevent horizontal layout shifts / viewport wobble on mobile and restrict drag rubberbanding */
 html, body {
   overflow-x: hidden;
   max-width: 100%;
 }
 
-@media (max-width: 640px) {
-  /* Reduces backdrop-filter computations by over 70% on mobile displays while retaining the beautiful translucent sheen */
-  .liquid-glass-card {
-    backdrop-filter: blur(12px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
-    background: rgba(255, 255, 255, 0.42) !important;
+@media (max-width: 768px) {
+  /* Class specific overrides for heavy keyframe loops to conserve mobile cycles */
+  .animate-spin-slow,
+  .animate-pulse,
+  .animate-ping {
+    animation: none !important;
   }
 
-  /* Disables compound backdrop-filters on sliding background blobs to conserve mobile GPU cycles */
-  .liquid-blob {
+  .glass-heavy,
+  .liquid-blur,
+  .background-blob,
+  .floating-orbit,
+  .decorative-particle {
+    display: none !important;
+  }
+
+  #welcome-quote-pill,
+  #center-canvas-orbit div,
+  #center-canvas-orbit {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Completely disable expensive backdrop filters and heavy multi-layered box-shadows on mobile */
+  .liquid-glass-card, 
+  .glass-card {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Disable parallax offset translations on background blobs and hide them */
+  .liquid-blob {
+    display: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* Mobile Safe Area Padding Alignment for modern iPhones/Android notches */

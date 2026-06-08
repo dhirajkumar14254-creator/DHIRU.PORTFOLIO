@@ -40,7 +40,7 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo, 
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
     window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
@@ -95,7 +95,7 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo, 
   const lastName = nameParts.slice(1).join(" ") || "Kumar";
 
   return (
-    <div id="home-page-viewport" className="relative w-full min-h-screen flex flex-col justify-between py-24 px-4 overflow-hidden select-none">
+    <div id="home-page-viewport" className="relative w-full min-h-screen flex flex-col justify-between py-24 px-4 overflow-x-hidden overflow-y-auto select-none">
       
       {/* TOP: Welcome section quote bar pill matching the picture layout */}
       <div id="top-welcome-banner" className="w-full flex justify-center pointer-events-none mb-6 z-20 font-sans">
@@ -161,143 +161,148 @@ export default function Home({ portfolioData, onNavToVideos, onPlayFloatingVdo, 
             }}
           />
 
-          {/* EDITING INTERFACE OVERLAY 1: FLOATING GLASS DECIBEL MIXER PANEL */}
-          <motion.div
-            initial={{ x: -40, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.35, type: "spring", stiffness: 100 }}
-            className="absolute -left-12 sm:-left-20 top-16 z-30 select-none pointer-events-auto filter drop-shadow-lg"
-          >
-            <div className="p-3 bg-white/75 backdrop-blur-xl border border-white/95 rounded-2xl flex flex-col gap-2.5 shadow-xl min-w-[70px] sm:min-w-[85px]">
-              <div className="flex justify-between items-center text-[8px] font-extrabold font-mono text-indigo-600 tracking-wider">
-                <span>MIXER v1</span>
-                <span className="text-emerald-500 font-bold">L•R</span>
-              </div>
-              
-              {/* Bouncing Audio Equalizers */}
-              <div className="flex items-end justify-between h-14 px-1 gap-1">
-                {[1, 2, 3, 4].map((bar) => {
-                  return (
-                    <div key={bar} className="flex-1 bg-slate-100 rounded-full h-full relative overflow-hidden flex flex-col justify-end">
-                      <motion.div
-                        style={{ originY: 1 }}
-                        animate={lowPowerMode || isMobile ? { scaleY: 0.55 } : { scaleY: [0.3, 0.95, 0.55, 0.85, 0.4, 0.9, 0.3] }}
-                        transition={{
-                          duration: 2.2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: bar * 0.15
-                        }}
-                        className="w-full h-full bg-gradient-to-t from-emerald-500 via-indigo-500 to-pink-500 rounded-full shadow-sm will-change-transform"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="text-[7px] font-mono text-slate-450 font-extrabold text-center tracking-widest uppercase">
-                FOLEY ACTIVE
-              </div>
-            </div>
-          </motion.div>
-
-          {/* EDITING INTERFACE OVERLAY 2: CINEMATIC LUT COLOR GRADED DIAL WHEEL */}
-          <motion.div
-            initial={{ x: 40, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.45, type: "spring", stiffness: 100 }}
-            className="absolute -right-12 sm:-right-20 top-20 z-30 select-none pointer-events-auto filter drop-shadow-lg"
-          >
-            <div className="p-3 bg-white/75 backdrop-blur-xl border border-white/95 rounded-2xl flex flex-col items-center gap-2 shadow-xl w-[75px] sm:w-[90px]">
-              <span className="text-[8px] font-extrabold font-mono text-indigo-600 tracking-wider">COLOR G.</span>
-              
-              {/* Radial Hue Spectrum Wheel */}
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-slate-200 relative flex items-center justify-center p-0.5 bg-gradient-to-tr from-rose-400 via-indigo-400 to-cyan-400 ${lowPowerMode || isMobile ? "" : "animate-[spin_24s_linear_infinite]"}`}>
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center relative">
-                  {/* Scope target dot */}
-                  <div className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-md animate-pulse" />
-                  <div className="w-0.5 h-full bg-indigo-500/10 absolute left-1/2 transform -translate-x-1/2" />
-                  <div className="h-0.5 w-full bg-indigo-500/10 absolute top-1/2 transform -translate-y-1/2" />
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-[7px] font-mono font-bold text-slate-500 uppercase">H: 142°</span>
-                <span className="text-[6px] font-mono font-extrabold text-[#6366f1] tracking-widest leading-none">HIGH RANGE</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* EDITING INTERFACE OVERLAY 3: FLOATING SENSATIONAL EDITOR TIMELINE TRACKS */}
-          <motion.div
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.55, type: "spring", stiffness: 100 }}
-            className="absolute -bottom-10 md:-bottom-6 left-1/2 transform -translate-x-1/2 z-35 select-none pointer-events-auto filter drop-shadow-xl w-[260px] sm:w-[320px]"
-          >
-            <div className="p-3 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl flex flex-col gap-2 shadow-2xl relative overflow-hidden">
-              {/* Sleek moving timeline playhead ruler marker overlay */}
-              <div className="absolute inset-x-0 top-0 h-1 bg-slate-800 flex justify-between px-2 font-mono text-[5px] text-slate-500 font-bold border-b border-slate-750">
-                <span className="text-[#3b82f6]">00:00</span>
-                <span>00:05</span>
-                <span>00:10</span>
-                <span>00:15</span>
-                <span>00:20</span>
-                <span>00:25</span>
-              </div>
-
-              {/* Glowing vertical playhead */}
-              <motion.div 
-                animate={lowPowerMode ? { x: isMobile ? 110 : 140 } : { x: isMobile ? [0, 220, 0] : [0, 280, 0] }}
-                transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                className="absolute top-0 bottom-0 left-[4%] w-[1.5px] bg-rose-500 z-10 pointer-events-none"
-                style={{ willChange: "transform" }}
+          {/* EDITING INTERFACE OVERLAY 1, 2 & 3: Conditionally rendered only on desktop for 120fps mobile performance */}
+          {!isMobile && (
+            <>
+              {/* EDITING INTERFACE OVERLAY 1: FLOATING GLASS DECIBEL MIXER PANEL */}
+              <motion.div
+                initial={{ x: -40, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.35, type: "spring", stiffness: 100 }}
+                className="absolute -left-12 sm:-left-20 top-16 z-30 select-none pointer-events-auto filter drop-shadow-lg"
               >
-                <div className="absolute top-0 -left-1 w-2.5 h-2 bg-rose-500 rounded-b-sm border-b border-rose-300" />
+                <div className="p-3 bg-white/75 backdrop-blur-xl border border-white/95 rounded-2xl flex flex-col gap-2.5 shadow-xl min-w-[70px] sm:min-w-[85px]">
+                  <div className="flex justify-between items-center text-[8px] font-extrabold font-mono text-indigo-600 tracking-wider">
+                    <span>MIXER v1</span>
+                    <span className="text-emerald-500 font-bold">L•R</span>
+                  </div>
+                  
+                  {/* Bouncing Audio Equalizers */}
+                  <div className="flex items-end justify-between h-14 px-1 gap-1">
+                    {[1, 2, 3, 4].map((bar) => {
+                      return (
+                        <div key={bar} className="flex-1 bg-slate-100 rounded-full h-full relative overflow-hidden flex flex-col justify-end">
+                          <motion.div
+                            style={{ originY: 1 }}
+                            animate={{ scaleY: [0.3, 0.95, 0.55, 0.85, 0.4, 0.9, 0.3] }}
+                            transition={{
+                              duration: 2.2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: bar * 0.15
+                            }}
+                            className="w-full h-full bg-gradient-to-t from-emerald-500 via-indigo-500 to-pink-500 rounded-full shadow-sm will-change-transform"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[7px] font-mono text-slate-450 font-extrabold text-center tracking-widest uppercase">
+                    FOLEY ACTIVE
+                  </div>
+                </div>
               </motion.div>
 
-              {/* Timeline Tracks lists */}
-              <div className="flex flex-col gap-1.5 mt-2.5">
-                {/* Track V2 - Title FX */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">V2</span>
-                  <div className="flex-1 bg-slate-800/80 rounded h-3.5 relative overflow-hidden flex items-center px-1">
-                    <span className="text-[6px] font-mono font-bold text-blue-400 truncate">💬 MOTION TEXT OVERLAY</span>
-                  </div>
-                </div>
-
-                {/* Track V1 - Main Segment */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">V1</span>
-                  <div className="flex-1 bg-indigo-500/20 border border-indigo-500/35 rounded h-3.5 relative overflow-hidden flex items-center px-1.5">
-                    {/* Tiny representation of editor photo inside track */}
-                    <div className="w-2.5 h-2.5 rounded-full overflow-hidden mr-1 shadow bg-slate-100 flex-shrink-0">
-                      <img src={activeAvatarImageUrl} className="w-full h-full object-cover" alt="timeline-avatar" />
+              {/* EDITING INTERFACE OVERLAY 2: CINEMATIC LUT COLOR GRADED DIAL WHEEL */}
+              <motion.div
+                initial={{ x: 40, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.45, type: "spring", stiffness: 100 }}
+                className="absolute -right-12 sm:-right-20 top-20 z-30 select-none pointer-events-auto filter drop-shadow-lg"
+              >
+                <div className="p-3 bg-white/75 backdrop-blur-xl border border-white/95 rounded-2xl flex flex-col items-center gap-2 shadow-xl w-[75px] sm:w-[90px]">
+                  <span className="text-[8px] font-extrabold font-mono text-indigo-600 tracking-wider">COLOR G.</span>
+                  
+                  {/* Radial Hue Spectrum Wheel */}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-slate-200 relative flex items-center justify-center p-0.5 bg-gradient-to-tr from-rose-400 via-indigo-400 to-cyan-400 animate-[spin_24s_linear_infinite]">
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center relative">
+                      {/* Scope target dot */}
+                      <div className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-md animate-pulse" />
+                      <div className="w-0.5 h-full bg-indigo-500/10 absolute left-1/2 transform -translate-x-1/2" />
+                      <div className="h-0.5 w-full bg-indigo-500/10 absolute top-1/2 transform -translate-y-1/2" />
                     </div>
-                    <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-indigo-300 truncate">🎬 PRIMARY_PORTRAIT.PNG</span>
-                    {/* Split line markers */}
-                    <div className="absolute right-[40%] top-0 bottom-0 border-r border-indigo-500/25" />
-                    <div className="absolute right-[15%] top-0 bottom-0 border-r border-indigo-500/25" />
                   </div>
-                </div>
 
-                {/* Track A1 - Cinematic Foley beat */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">A1</span>
-                  <div className="flex-1 bg-emerald-500/15 border border-emerald-500/30 rounded h-3.5 relative overflow-hidden flex items-center px-1.5 justify-between">
-                    <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-emerald-400 truncate flex items-center gap-1">
-                      <span>🎵</span> CINEMATIC_BEAT_24BIT.WAV
-                    </span>
-                    {/* Bouncing miniature audio wave */}
-                    <span className="flex items-center gap-[1px] pr-1">
-                      <span className="w-[1.5px] h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                      <span className="w-[1.5px] h-2.5 bg-emerald-400 rounded-full animate-ping" />
-                      <span className="w-[1.5px] h-1 bg-emerald-400 rounded-full animate-pulse" />
-                    </span>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-[7px] font-mono font-bold text-slate-500 uppercase">H: 142°</span>
+                    <span className="text-[6px] font-mono font-extrabold text-[#6366f1] tracking-widest leading-none">HIGH RANGE</span>
                   </div>
                 </div>
-              </div>
-            </div>
-          </motion.div>
+              </motion.div>
+
+              {/* EDITING INTERFACE OVERLAY 3: FLOATING SENSATIONAL EDITOR TIMELINE TRACKS */}
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.55, type: "spring", stiffness: 100 }}
+                className="absolute -bottom-10 md:-bottom-6 left-1/2 transform -translate-x-1/2 z-35 select-none pointer-events-auto filter drop-shadow-xl w-[260px] sm:w-[320px]"
+              >
+                <div className="p-3 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl flex flex-col gap-2 shadow-2xl relative overflow-hidden">
+                  {/* Sleek moving timeline playhead ruler marker overlay */}
+                  <div className="absolute inset-x-0 top-0 h-1 bg-slate-800 flex justify-between px-2 font-mono text-[5px] text-slate-500 font-bold border-b border-slate-750">
+                    <span className="text-[#3b82f6]">00:00</span>
+                    <span>00:05</span>
+                    <span>00:10</span>
+                    <span>00:15</span>
+                    <span>00:20</span>
+                    <span>00:25</span>
+                  </div>
+
+                  {/* Glowing vertical playhead */}
+                  <motion.div 
+                    animate={{ x: [0, 280, 0] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-0 bottom-0 left-[4%] w-[1.5px] bg-rose-500 z-10 pointer-events-none"
+                    style={{ willChange: "transform" }}
+                  >
+                    <div className="absolute top-0 -left-1 w-2.5 h-2 bg-rose-500 rounded-b-sm border-b border-rose-300" />
+                  </motion.div>
+
+                  {/* Timeline Tracks lists */}
+                  <div className="flex flex-col gap-1.5 mt-2.5">
+                    {/* Track V2 - Title FX */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">V2</span>
+                      <div className="flex-1 bg-slate-800/80 rounded h-3.5 relative overflow-hidden flex items-center px-1">
+                        <span className="text-[6px] font-mono font-bold text-blue-400 truncate">💬 MOTION TEXT OVERLAY</span>
+                      </div>
+                    </div>
+
+                    {/* Track V1 - Main Segment */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">V1</span>
+                      <div className="flex-1 bg-indigo-500/20 border border-indigo-500/35 rounded h-3.5 relative overflow-hidden flex items-center px-1.5">
+                        {/* Tiny representation of editor photo inside track */}
+                        <div className="w-2.5 h-2.5 rounded-full overflow-hidden mr-1 shadow bg-slate-100 flex-shrink-0">
+                          <img src={activeAvatarImageUrl} className="w-full h-full object-cover" alt="timeline-avatar" />
+                        </div>
+                        <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-indigo-300 truncate">🎬 PRIMARY_PORTRAIT.PNG</span>
+                        {/* Split line markers */}
+                        <div className="absolute right-[40%] top-0 bottom-0 border-r border-indigo-500/25" />
+                        <div className="absolute right-[15%] top-0 bottom-0 border-r border-indigo-500/25" />
+                      </div>
+                    </div>
+
+                    {/* Track A1 - Cinematic Foley beat */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-slate-500 w-4 block text-left">A1</span>
+                      <div className="flex-1 bg-emerald-500/15 border border-emerald-500/30 rounded h-3.5 relative overflow-hidden flex items-center px-1.5 justify-between">
+                        <span className="text-[6px] sm:text-[7px] font-mono font-extrabold text-emerald-400 truncate flex items-center gap-1">
+                          <span>🎵</span> CINEMATIC_BEAT_24BIT.WAV
+                        </span>
+                        {/* Bouncing miniature audio wave */}
+                        <span className="flex items-center gap-[1px] pr-1">
+                          <span className="w-[1.5px] h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                          <span className="w-[1.5px] h-2.5 bg-emerald-400 rounded-full animate-ping" />
+                          <span className="w-[1.5px] h-1 bg-emerald-400 rounded-full animate-pulse" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
 
           {/* Main Portrait Frame - Wrap with interactive trigger opening dynamic compiled CV */}
           <button

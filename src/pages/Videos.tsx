@@ -62,11 +62,29 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
     });
   }, [videosList, searchQuery, selectedCategory]);
 
-  // Pagination logic
-  const paginatedVideos = useMemo(() => {
+  // Pagination & Mobile Safe Mode logic
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(3);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileScreen(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Reset mobile visible count when search filter variables change
+  useEffect(() => {
+    setMobileVisibleCount(3);
+  }, [searchQuery, selectedCategory]);
+
+  const displayedVideos = useMemo(() => {
+    if (isMobileScreen) {
+      return filteredVideos.slice(0, mobileVisibleCount);
+    }
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredVideos.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredVideos, currentPage]);
+  }, [filteredVideos, isMobileScreen, mobileVisibleCount, currentPage]);
 
   const totalPages = Math.ceil(filteredVideos.length / itemsPerPage) || 1;
 
@@ -209,7 +227,7 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
             {/* VIDEOS COLLECTION GRID */}
             {filteredVideos.length > 0 ? (
               <div id="video-grid-container" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full auto-rows-max min-h-[400px]">
-                {paginatedVideos.map((video) => (
+                {displayedVideos.map((video) => (
                   <motion.div
                     key={video.id}
                     layout
@@ -242,8 +260,21 @@ export default function Videos({ onPlaySelected, portfolioData }: VideosProps) {
               </div>
             )}
 
+            {/* MOBILE LOAD MORE ACTION BUTTON */}
+            {isMobileScreen && filteredVideos.length > mobileVisibleCount && (
+              <div className="w-full flex justify-center mt-6 select-none">
+                <button
+                  type="button"
+                  onClick={() => setMobileVisibleCount((prev) => prev + 3)}
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-bold text-xs uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                >
+                  Load More Videos
+                </button>
+              </div>
+            )}
+
             {/* PAGINATION SECTION */}
-            {totalPages > 1 && (
+            {totalPages > 1 && !isMobileScreen && (
               <div id="videos-pagination" className="w-full flex justify-center mt-6 select-none">
                 <GlassCard 
                   id="paginator-bar"

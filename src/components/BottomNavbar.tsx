@@ -75,6 +75,15 @@ export default function BottomNavbar({
   setTab,
   onExploreClick,
 }: BottomNavbarProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const items = [
     { id: "home", label: "HOME", icon: Home },
     { id: "videos", label: "VIDEOS", icon: Video },
@@ -91,8 +100,10 @@ export default function BottomNavbar({
       className="fixed bottom-5 sm:bottom-6 left-1/2 z-[9999] w-[96%] max-w-2xl px-1 sm:px-2 pointer-events-none"
       style={{ transform: "translateX(-50%)" }}
     >
-      {/* Visual background atmospheric glow */}
-      <div className="absolute inset-x-4 -top-3 bottom-0 -z-20 rounded-[28px] bg-gradient-to-r from-[#3b82f6]/10 via-[#6366f1]/10 to-[#ec4899]/10 blur-xl pointer-events-none opacity-80" />
+      {/* Visual background atmospheric glow - Hidden on mobile screens */}
+      {!isMobile && (
+        <div className="absolute inset-x-4 -top-3 bottom-0 -z-20 rounded-[28px] bg-gradient-to-r from-[#3b82f6]/10 via-[#6366f1]/10 to-[#ec4899]/10 blur-xl pointer-events-none opacity-80" />
+      )}
 
       <div 
         id="bottom-navbar"
@@ -116,23 +127,37 @@ export default function BottomNavbar({
                   key="explore" 
                   className="flex-none flex items-center justify-center px-0.5 sm:px-1"
                 >
-                  <motion.button
-                    id="explore-world-btn"
-                    onClick={onExploreClick}
-                    whileHover={{ 
-                      scale: 1.06, 
-                      boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
-                      y: -1
-                    }}
-                    whileTap={{ scale: 0.94 }}
-                    className="
-                      flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-pink-500
-                      text-white text-[7px] xs:text-[8px] sm:text-[9.5px] md:text-xs font-black tracking-wider rounded-xl sm:rounded-2xl shadow-lg border border-white/20 cursor-pointer select-none whitespace-nowrap
-                    "
-                  >
-                    <Compass size={14} className="animate-spin-slow shrink-0" />
-                    <span className="font-extrabold uppercase leading-none select-none">Explore</span>
-                  </motion.button>
+                  {isMobile ? (
+                    <button
+                      id="explore-world-btn"
+                      onClick={onExploreClick}
+                      className="
+                        flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-pink-500
+                        text-white text-[7px] xs:text-[8px] sm:text-[9.5px] md:text-xs font-black tracking-wider rounded-xl sm:rounded-2xl border border-white/20 cursor-pointer select-none whitespace-nowrap
+                      "
+                    >
+                      <Compass size={14} className="shrink-0" />
+                      <span className="font-extrabold uppercase leading-none select-none">Explore</span>
+                    </button>
+                  ) : (
+                    <motion.button
+                      id="explore-world-btn"
+                      onClick={onExploreClick}
+                      whileHover={{ 
+                        scale: 1.06, 
+                        boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
+                        y: -1
+                      }}
+                      whileTap={{ scale: 0.94 }}
+                      className="
+                        flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-pink-500
+                        text-white text-[7px] xs:text-[8px] sm:text-[9.5px] md:text-xs font-black tracking-wider rounded-xl sm:rounded-2xl shadow-lg border border-white/20 cursor-pointer select-none whitespace-nowrap
+                      "
+                    >
+                      <Compass size={14} className="animate-spin-slow shrink-0" />
+                      <span className="font-extrabold uppercase leading-none select-none">Explore</span>
+                    </motion.button>
+                  )}
                 </div>
               );
             }
@@ -155,19 +180,28 @@ export default function BottomNavbar({
               >
                 {/* Active option bubble overlay */}
                 {isActive && (
-                  <motion.div
-                    layoutId="navbar-active-bubble"
-                    className={`absolute inset-0 ${theme.activeBg} rounded-xl sm:rounded-2xl border border-white/75 -z-10`}
-                    transition={{
-                      type: "spring",
-                      stiffness: 380,
-                      damping: 26,
-                      mass: 0.8
-                    }}
-                    style={{
-                      boxShadow: `0 6px 14px ${theme.glow}, inset 0 1px 2px rgba(255,255,255,0.85)`
-                    }}
-                  />
+                  isMobile ? (
+                    <div
+                      className={`absolute inset-0 ${theme.activeBg} rounded-xl sm:rounded-2xl border border-white/75 -z-10`}
+                      style={{
+                        boxShadow: `0 3px 8px ${theme.glow}, inset 0 1px 1px rgba(255,255,255,0.8)`
+                      }}
+                    />
+                  ) : (
+                    <motion.div
+                      layoutId="navbar-active-bubble"
+                      className={`absolute inset-0 ${theme.activeBg} rounded-xl sm:rounded-2xl border border-white/75 -z-10`}
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 26,
+                        mass: 0.8
+                      }}
+                      style={{
+                        boxShadow: `0 6px 14px ${theme.glow}, inset 0 1px 2px rgba(255,255,255,0.85)`
+                      }}
+                    />
+                  )
                 )}
                 
                 <Icon 
@@ -180,15 +214,21 @@ export default function BottomNavbar({
                 </span>
 
                 {isActive && (
-                  <motion.div
-                    layoutId="active-indicator"
-                    className={`absolute bottom-[1px] left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full ${theme.indicator} z-10`}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 22
-                    }}
-                  />
+                  isMobile ? (
+                    <div
+                      className={`absolute bottom-[1px] left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full ${theme.indicator} z-10`}
+                    />
+                  ) : (
+                    <motion.div
+                      layoutId="active-indicator"
+                      className={`absolute bottom-[1px] left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full ${theme.indicator} z-10`}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 22
+                      }}
+                    />
+                  )
                 )}
               </button>
             );
